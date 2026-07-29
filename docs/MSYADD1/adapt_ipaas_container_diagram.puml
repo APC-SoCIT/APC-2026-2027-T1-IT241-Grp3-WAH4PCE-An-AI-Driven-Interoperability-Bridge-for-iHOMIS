@@ -1,0 +1,40 @@
+@startuml WAH4PCE_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+'Diagram Title
+title Container Diagram for WAH4PCE Interoperability Server
+
+'Actors
+Person(admin, "WAH4PCE Admin", "IT administrator overseeing the interoperability pipeline, monitoring metrics, and reviewing quarantined records.")
+
+System_Boundary(wah4pce_boundary, "WAH4PCE Interoperability Server (ADAPT)") {
+    Container(web_app, "Web Dashboard", "Next.js, React", "Provides the admin dashboard for monitoring metrics, viewing transaction history, and managing quarantined records.")
+    
+    Container(api_app, "Interoperability Routing & ADAPT Engine", "Golang, MCP", "Inherited Batch 1 server upgraded with the ADAPT engine. Handles data routing, consent validation, and AI transformation using Gemini MCP.")
+    
+    ContainerDb(database, "Temporary Staging Database", "MongoDB", "Temporarily holds incoming health records for translation and stores sanitized audit logs. Ephemeral processing with no PHI stored permanently.")
+}
+
+'External Systems
+System_Ext(ihomis, "iHOMIS", "DOH Legacy Hospital System (HL7 v2 + flat JSON).")
+System_Ext(wah_hospital, "WAH Hospital", "Modern FHIR R4 System (FHIR R4 Transaction Bundle).")
+System_Ext(gemini, "Google Gemini AI", "Cloud AI Service used as the transformation engine.")
+
+'Relationships
+Rel_D(admin, web_app, "Monitors system health and manages records", "HTTPS")
+
+' Containers horizontal
+Rel_R(web_app, api_app, "Fetches metrics and transaction logs", "JSON/HTTPS")
+Rel_R(api_app, database, "Reads/writes transaction and audit logs", "REST/PostgREST")
+
+' External systems below the API app
+Rel_U(ihomis, api_app, "Sends HL7 v2 records for transformation", "POST /api/ingest", "JSON payload")
+Rel_D(api_app, ihomis, "Sends transformed flat JSON records", "POST /api/webhook", "JSON payload")
+
+Rel_U(wah_hospital, api_app, "Sends FHIR R4 bundles for transformation", "POST /api/ingest", "JSON payload")
+Rel_D(api_app, wah_hospital, "Sends transformed FHIR R4 bundles", "POST /api/webhook", "JSON payload")
+
+Rel_D(api_app, gemini, "Sends transformation prompts and payload", "Google SDK/HTTPS")
+Rel_U(gemini, api_app, "Returns translated structured JSON", "JSON/HTTPS")
+
+@enduml

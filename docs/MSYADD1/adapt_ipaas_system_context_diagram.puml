@@ -1,33 +1,129 @@
-@startuml ADAPT_iPaaS_System_Context
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+@startuml ADAPT_iPaaS_Component_Diagram
+' ============================================================
+' ADAPT iPaaS - Component Diagram
+' Team Merge Conflict | AY 2025-2026
+' ============================================================
 
-'Diagram Title
-title System Context Diagram for WAH4PCE
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1A1A2E
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam wrapWidth 180
 
-'Actors
-Person(admin, "WAH4PCE Admin", "IT administrator overseeing the interoperability pipeline, monitoring metrics, and reviewing quarantined records.")
+skinparam rectangle {
+    BackgroundColor #1155CC
+    BorderColor #1155CC
+    FontColor #FFFFFF
+    FontSize 12
+    RoundCorner 8
+}
 
-'The Main System
-System(adapt_ipaas, "WAH4PCE Interoperability Server", "Inherited Batch 1 server upgraded with the ADAPT engine. Provides bidirectional AI translation between HL7 v2 and FHIR R4.")
+skinparam component {
+    BackgroundColor #1155CC
+    BorderColor #0D47A1
+    FontColor #FFFFFF
+    FontSize 11
+    Style rectangle
+}
 
-'External Systems
-System_Ext(ihomis, "iHOMIS", "DOH Legacy Hospital System that sends and receives data in HL7 v2 + flat JSON format.")
-System_Ext(wah_hospital, "WAH Hospital", "Modern FHIR R4 System that sends and receives data in FHIR R4 Transaction Bundle format.")
-System_Ext(gemini, "Google Gemini AI", "Cloud AI Service used as the transformation engine via Model Context Protocol (MCP).")
-System_Ext(supabase, "MongoDB Database", "Document database used for temporary data staging and transaction audit logs.")
+skinparam database {
+    BackgroundColor #555555
+    BorderColor #333333
+    FontColor #FFFFFF
+    FontSize 11
+}
 
-'Relationships/ Interactions
-Rel(admin, adapt_ipaas, "Monitors dashboard, views logs, and manages quarantined records", "HTTPS")
+skinparam actor {
+    BackgroundColor #1155CC
+    BorderColor #0D47A1
+    FontColor #FFFFFF
+}
 
-Rel(ihomis, adapt_ipaas, "Sends HL7 v2 records for transformation", "POST /api/ingest")
-Rel(adapt_ipaas, ihomis, "Sends transformed flat JSON records", "POST /api/webhook")
+skinparam arrow {
+    Color #555555
+    FontColor #444444
+    FontSize 10
+}
 
-Rel(wah_hospital, adapt_ipaas, "Sends FHIR R4 bundles for transformation", "POST /api/ingest")
-Rel(adapt_ipaas, wah_hospital, "Sends transformed FHIR R4 bundles", "POST /api/webhook")
+skinparam note {
+    BackgroundColor #FFFDE7
+    BorderColor #F9A825
+    FontColor #333333
+    FontSize 10
+}
 
-Rel(adapt_ipaas, gemini, "Sends prompts for HL7 v2 <-> FHIR R4 translation", "Google SDK")
-Rel(gemini, adapt_ipaas, "Returns structured JSON translations", "JSON")
+title System Component Diagram for ADAPT iPaaS
 
-Rel(adapt_ipaas, supabase, "Reads/writes transaction and audit logs", "REST API")
+' ---------------------------------------------------------
+' ACTOR
+' ---------------------------------------------------------
+actor "«person»\n\nSystem Admin\n\nIT administrator who monitors\nthe interoperability pipeline,\nviews transaction logs, and\nmanages AI configuration." as ADMIN
+
+' ---------------------------------------------------------
+' ADAPT iPaaS — CORE COMPONENTS
+' ---------------------------------------------------------
+rectangle "«component»\n\nAdmin Dashboard\n\nWeb-based interface for the\nsystem admin to monitor metrics,\nview transaction logs, test data\nmappings, and configure AI models." as DASHBOARD #1155CC
+
+rectangle "«component»\n\nIngest API\n\nReceives patient records from\neither hospital, runs AI\ntransformation, validates the\nresult, and forwards it to the\ndestination system." as INGEST #1155CC
+
+rectangle "«component»\n\nAI Transformation Service\n\nConverts patient records between\nHL7 v2 and FHIR R4 formats using\na chain of AI models. Tries each\nmodel in order until one succeeds." as AI_SVC #1155CC
+
+rectangle "«component»\n\nValidation Service\n\nChecks that the transformed\nrecord is complete and correct\nbefore it is forwarded. Flags\nrecords as Quarantined if they\nfail validation." as VALIDATOR #1155CC
+
+rectangle "«component»\n\nTransaction Log Service\n\nRecords every ingest request and\nits outcome. Tracks status from\nPending through to Success or\nQuarantined." as TX_LOG #1155CC
+
+rectangle "«component»\n\nMetrics Service\n\nAggregates transaction counts\nby status and direction and\nsupplies them to the Admin\nDashboard." as METRICS #1155CC
+
+' ---------------------------------------------------------
+' EXTERNAL SYSTEMS
+' ---------------------------------------------------------
+rectangle "«external_system»\n\niHOMIS\n\nDOH Legacy Hospital System\nthat sends and receives patient\nrecords in HL7 v2 flat JSON\nformat." as IHOMIS #555555
+
+rectangle "«external_system»\n\nWAH Hospital\n\nModern hospital system that\nsends and receives patient\nrecords in FHIR R4 Bundle\nformat." as WAH #555555
+
+rectangle "«external_system»\n\nGoogle Gemini AI\n\nPrimary AI provider used to\ntransform patient records.\nFalls back to the next model\nif quota is exceeded." as GEMINI #555555
+
+rectangle "«external_system»\n\nGroq API\n\nFallback AI provider used\nwhen all Gemini models are\nunavailable or over quota." as GROQ #555555
+
+database "«external_system»\n\nSupabase Database\n\nCloud-hosted PostgreSQL\ndatabase that stores all\ntransaction logs and\nraw payloads." as SUPABASE #555555
+
+' ---------------------------------------------------------
+' RELATIONSHIPS
+' ---------------------------------------------------------
+ADMIN -down-> DASHBOARD : Monitors dashboard,\nviews logs, and manages\nconfiguration\n[HTTPS]
+
+DASHBOARD -down-> INGEST      : Sends test transform\nrequests\n[POST /api/ingest]
+DASHBOARD -down-> TX_LOG      : Fetches transaction\nlogs\n[GET /api/transactions]
+DASHBOARD -down-> METRICS     : Fetches aggregated\nstats\n[GET /api/metrics]
+
+IHOMIS -right-> INGEST : Sends HL7 v2 records\nfor transformation\n[POST /api/ingest]
+WAH    -left->  INGEST : Sends FHIR R4 bundles\nfor transformation\n[POST /api/ingest]
+
+INGEST -down-> AI_SVC    : Requests AI\ntransformation
+INGEST -down-> VALIDATOR : Validates\ntransformed record
+INGEST -down-> TX_LOG    : Logs transaction\nstatus and payload
+
+INGEST -right-> IHOMIS : Sends transformed\nflat JSON record\n[POST /api/webhook]
+INGEST -left->  WAH    : Sends transformed\nFHIR R4 bundle\n[POST /api/webhook]
+
+AI_SVC -down-> GEMINI : Sends transformation\nrequest\n[Primary]
+AI_SVC -down-> GROQ   : Sends transformation\nrequest\n[Fallback]
+
+TX_LOG   -down-> SUPABASE : Reads and writes\ntransaction logs\n[REST API]
+METRICS  -down-> SUPABASE : Reads transaction\ncounts\n[REST API]
+
+' ---------------------------------------------------------
+' LEGEND
+' ---------------------------------------------------------
+legend right
+  |= Color |= Meaning |
+  |<#1155CC>  | ADAPT iPaaS Internal Component |
+  |<#555555>  | External System |
+
+  Solid arrows = data flow at runtime
+endlegend
 
 @enduml

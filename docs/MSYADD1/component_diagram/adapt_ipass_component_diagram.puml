@@ -1,166 +1,59 @@
 ﻿@startuml ADAPT_iPaaS_Component_Diagram
-' ============================================================
-' ADAPT iPaaS - Component Diagram
-' Team Merge Conflict | AY 2025-2026
-' ============================================================
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-!theme plain
-top to bottom direction
+title Component Diagram for ADAPT iPaaS Middleware
 
-skinparam backgroundColor #FFFFFF
-skinparam defaultFontName "Segoe UI"
-skinparam defaultFontSize 11
-skinparam defaultFontColor #1A1A2E
-skinparam shadowing false
-skinparam roundCorner 6
-skinparam wrapWidth 160
+Person(admin, "System Admin", "IT administrator who monitors the interoperability pipeline, views logs, and manages config.")
 
-skinparam rectangle {
-    BackgroundColor #1155CC
-    BorderColor #0D47A1
-    FontColor #FFFFFF
-    FontSize 11
-    RoundCorner 6
+System_Ext(gemini, "Google Gemini AI", "Primary AI provider for record transformation.")
+System_Ext(groq, "Groq API", "Fallback AI provider.")
+SystemDb_Ext(supabase, "Supabase Database", "Stores transaction logs and metrics.")
+
+System_Ext(requester, "Data Requester", "External system requesting data.")
+System_Ext(provider, "Data Provider", "External system providing approved records.")
+
+Container_Boundary(adapt_ipaas, "ADAPT iPaaS") {
+    
+    Component(dashboard, "Admin Dashboard", "Web UI", "Monitor metrics, view logs, test transforms, and configure AI models.")
+    
+    Container_Boundary(api_layer, "API Layer") {
+        Component(request_api, "Request API", "API", "Handles bidirectional data requests. Logs Pending transaction.")
+        Component(ingest_api, "Ingest API", "API", "Receives approved records. Runs AI transformation, validates, forwards.")
+        Component(decline_api, "Decline API", "API", "Handles request declines. Marks transaction as Quarantined.")
+    }
+
+    Container_Boundary(core_services, "Core Services") {
+        Component(ai_svc, "AI Transformation Service", "Service", "Converts records across formats using a chain of AI models.")
+        Component(validator, "Validation Service", "Service", "Checks that transformed record is complete and correct.")
+        Component(tx_log, "Transaction Log Service", "Service", "Records every event and tracks status.")
+        Component(metrics, "Metrics Service", "Service", "Aggregates transaction counts by status, direction, format.")
+    }
 }
 
-skinparam package {
-    BackgroundColor #EEF2FF
-    BorderColor #9BA8E0
-    FontColor #1A1A2E
-    FontSize 12
-    Style rectangle
-}
+Rel(admin, dashboard, "Monitors dashboard, views logs and config", "HTTPS")
 
-skinparam database {
-    BackgroundColor #555555
-    BorderColor #333333
-    FontColor #FFFFFF
-    FontSize 11
-}
+Rel(dashboard, ingest_api, "Tests transforms", "POST /api/ingest")
+Rel(dashboard, tx_log, "Fetches logs", "GET /api/transactions")
+Rel(dashboard, metrics, "Fetches stats", "GET /api/metrics")
 
-skinparam actor {
-    BackgroundColor #1155CC
-    BorderColor #0D47A1
-    FontColor #FFFFFF
-}
+Rel(requester, request_api, "Data request", "POST /api/request")
+Rel(provider, ingest_api, "Approved record", "POST /api/ingest")
+Rel(provider, decline_api, "Declines request", "POST /api/decline")
 
-skinparam arrow {
-    Color #444444
-    FontColor #444444
-    FontSize 9
-}
+Rel(request_api, tx_log, "Logs request as Pending")
+Rel(decline_api, tx_log, "Updates to Quarantined")
 
-title System Component Diagram for ADAPT iPaaS
+Rel(ingest_api, ai_svc, "Requests transformation")
+Rel(ingest_api, validator, "Validates output")
+Rel(ingest_api, tx_log, "Logs status and payload")
 
-' ---------------------------------------------------------
-' ACTOR
-' ---------------------------------------------------------
-actor "<<person>>\n\nSystem Admin\n\nIT administrator who monitors\nthe interoperability pipeline,\nviews transaction logs, and\nmanages AI configuration." as ADMIN
+Rel(ingest_api, requester, "Transformed record/bundle", "POST /api/webhook")
+Rel(request_api, provider, "Forwards data request", "POST /api/requests")
+Rel(decline_api, requester, "Notifies of decline", "POST /api/webhook")
 
-' ---------------------------------------------------------
-' ADMIN DASHBOARD
-' ---------------------------------------------------------
-rectangle "<<component>>\n\nAdmin Dashboard\n\nWeb interface for the admin to\nmonitor metrics, view transaction\nlogs, test data mappings, and\nconfigure AI models." as DASHBOARD #1155CC
-
-' ---------------------------------------------------------
-' API LAYER
-' ---------------------------------------------------------
-package "API Layer" as API_LAYER {
-    rectangle "<<component>>\n\nRequest API\n\nHandles bidirectional data\nrequests between organizations\nand WAH. Logs a Pending\ntransaction and forwards\nthe request for approval." as REQUEST_API #1155CC
-
-    rectangle "<<component>>\n\nIngest API\n\nReceives approved patient records.\nSupports HL7 v2, FHIR R4,\nand CDA R2. Runs AI\ntransformation, validates,\nand forwards to destination." as INGEST #1155CC
-
-    rectangle "<<component>>\n\nDecline API\n\nHandles request declines from\neither direction. Marks the\nrelated transaction as\nQuarantined and notifies\nthe originating system." as DECLINE_API #1155CC
-}
-
-' ---------------------------------------------------------
-' CORE SERVICES
-' ---------------------------------------------------------
-package "Core Services" as CORE_SERVICES {
-    rectangle "<<component>>\n\nAI Transformation\nService\n\nConverts records across\nHL7 v2, FHIR R4, and CDA R2\nusing a chain of AI models.\nTries each model in order\nuntil one succeeds." as AI_SVC #1155CC
-
-    rectangle "<<component>>\n\nValidation Service\n\nChecks that the transformed\nrecord is complete and correct\nbefore forwarding. Flags\nfailed records as\nQuarantined." as VALIDATOR #1155CC
-
-    rectangle "<<component>>\n\nTransaction Log\nService\n\nRecords every request, ingest,\nand decline event. Tracks\nstatus across Pending,\nTransforming, Success,\nand Quarantined." as TX_LOG #1155CC
-
-    rectangle "<<component>>\n\nMetrics Service\n\nAggregates transaction\ncounts by status, direction,\nand data format. Supplies\nstats to the Admin\nDashboard." as METRICS #1155CC
-}
-
-' ---------------------------------------------------------
-' EXTERNAL SYSTEMS
-' ---------------------------------------------------------
-package "External Systems" as EXT_SYSTEMS {
-    rectangle "<<external_system>>\n\nOrganization\n(e.g. iHOMIS / DOH)\n\nLegacy or partner hospital\nsystem. Sends and receives\nrecords in HL7 v2 or\nCDA R2 format." as IHOMIS #555555
-
-    rectangle "<<external_system>>\n\nWAH Hospital\n\nModern hospital system.\nSends and receives patient\nrecords in FHIR R4\nBundle format." as WAH #555555
-
-    rectangle "<<external_system>>\n\nGoogle Gemini AI\n\nPrimary AI provider for\nrecord transformation.\nFalls back to the next\nmodel if quota is exceeded." as GEMINI #555555
-
-    rectangle "<<external_system>>\n\nGroq API\n\nFallback AI provider used\nwhen all Gemini models\nare unavailable or\nover quota." as GROQ #555555
-
-    database "<<external_system>>\n\nSupabase Database\n\nCloud-hosted PostgreSQL.\nStores all transaction logs,\nraw payloads, and\ntransformed records." as SUPABASE #555555
-}
-
-' ---------------------------------------------------------
-' RELATIONSHIPS — Admin to Dashboard
-' ---------------------------------------------------------
-ADMIN -down-> DASHBOARD : Monitors dashboard,\nviews logs and config\n[HTTPS]
-
-' ---------------------------------------------------------
-' RELATIONSHIPS — Dashboard to API Layer
-' ---------------------------------------------------------
-DASHBOARD -down-> INGEST      : Tests transforms\n[POST /api/ingest]
-DASHBOARD -down-> TX_LOG      : Fetches logs\n[GET /api/transactions]
-DASHBOARD -down-> METRICS     : Fetches stats\n[GET /api/metrics]
-
-' ---------------------------------------------------------
-' RELATIONSHIPS — External to API Layer
-' ---------------------------------------------------------
-IHOMIS -up-> REQUEST_API : Data request\n[POST /api/request]
-IHOMIS -up-> INGEST      : Approved record\n[POST /api/ingest]
-IHOMIS -up-> DECLINE_API : Declines request\n[POST /api/decline]
-
-WAH -up-> REQUEST_API : Data request\n[POST /api/request]
-WAH -up-> INGEST      : Approved record\n[POST /api/ingest]
-WAH -up-> DECLINE_API : Declines request\n[POST /api/decline]
-
-' ---------------------------------------------------------
-' RELATIONSHIPS — API Layer to Core Services
-' ---------------------------------------------------------
-REQUEST_API -down-> TX_LOG : Logs request\nas Pending
-DECLINE_API -down-> TX_LOG : Updates to\nQuarantined
-
-INGEST -down-> AI_SVC    : Requests\ntransformation
-INGEST -down-> VALIDATOR : Validates\noutput
-INGEST -down-> TX_LOG    : Logs status\nand payload
-
-' ---------------------------------------------------------
-' RELATIONSHIPS — API Layer back to External
-' ---------------------------------------------------------
-INGEST      -down-> IHOMIS : Transformed record\n[POST /api/webhook]
-INGEST      -down-> WAH    : Transformed bundle\n[POST /api/webhook]
-REQUEST_API -down-> IHOMIS : Forwards WAH request\n[POST /api/incoming-requests]
-REQUEST_API -down-> WAH    : Forwards org request\n[POST /api/requests]
-DECLINE_API -down-> IHOMIS : Notifies of decline\n[POST /api/webhook]
-
-' ---------------------------------------------------------
-' RELATIONSHIPS — Core Services to External
-' ---------------------------------------------------------
-AI_SVC  -down-> GEMINI   : Transformation request\n[Primary]
-AI_SVC  -down-> GROQ     : Transformation request\n[Fallback]
-TX_LOG  -down-> SUPABASE : Reads/writes logs\n[REST API]
-METRICS -down-> SUPABASE : Reads counts\n[REST API]
-
-' ---------------------------------------------------------
-' LEGEND
-' ---------------------------------------------------------
-legend right
-  |= Color |= Meaning |
-  |<#1155CC>  | ADAPT iPaaS Internal Component |
-  |<#555555>  | External System |
-  |<#EEF2FF>  | Logical Grouping |
-
-  Solid arrows = data flow at runtime
-endlegend
+Rel(ai_svc, gemini, "Transformation request (Primary)")
+Rel(ai_svc, groq, "Transformation request (Fallback)")
+Rel(tx_log, supabase, "Reads/writes logs", "REST API")
+Rel(metrics, supabase, "Reads counts", "REST API")
 
 @enduml

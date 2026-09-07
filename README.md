@@ -1,3 +1,3 @@
 # apc-mssyadd1-template
-Template repository for APC MSSYADD1
+Template repository for APC MSYADD1
 

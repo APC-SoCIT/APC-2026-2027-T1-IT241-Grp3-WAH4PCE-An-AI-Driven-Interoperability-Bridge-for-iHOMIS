@@ -1,0 +1,33 @@
+@startuml ADAPT_iPaaS_System_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+'Diagram Title
+title System Context Diagram for WAH4PCE
+
+'Actors
+Person(admin, "WAH4PCE Admin", "IT administrator overseeing the interoperability pipeline, monitoring metrics, and reviewing quarantined records.")
+
+'The Main System
+System(adapt_ipaas, "WAH4PCE Interoperability Server", "Inherited Batch 1 server upgraded with the ADAPT engine. Provides bidirectional AI translation between HL7 v2 and FHIR R4.")
+
+'External Systems
+System_Ext(ihomis, "iHOMIS", "DOH Legacy Hospital System that sends and receives data in HL7 v2 + flat JSON format.")
+System_Ext(wah_hospital, "WAH Hospital", "Modern FHIR R4 System that sends and receives data in FHIR R4 Transaction Bundle format.")
+System_Ext(gemini, "Google Gemini AI", "Cloud AI Service used as the transformation engine via Model Context Protocol (MCP).")
+System_Ext(supabase, "MongoDB Database", "Document database used for temporary data staging and transaction audit logs.")
+
+'Relationships/ Interactions
+Rel(admin, adapt_ipaas, "Monitors dashboard, views logs, and manages quarantined records", "HTTPS")
+
+Rel(ihomis, adapt_ipaas, "Sends HL7 v2 records for transformation", "POST /api/ingest")
+Rel(adapt_ipaas, ihomis, "Sends transformed flat JSON records", "POST /api/webhook")
+
+Rel(wah_hospital, adapt_ipaas, "Sends FHIR R4 bundles for transformation", "POST /api/ingest")
+Rel(adapt_ipaas, wah_hospital, "Sends transformed FHIR R4 bundles", "POST /api/webhook")
+
+Rel(adapt_ipaas, gemini, "Sends prompts for HL7 v2 <-> FHIR R4 translation", "Google SDK")
+Rel(gemini, adapt_ipaas, "Returns structured JSON translations", "JSON")
+
+Rel(adapt_ipaas, supabase, "Reads/writes transaction and audit logs", "REST API")
+
+@enduml

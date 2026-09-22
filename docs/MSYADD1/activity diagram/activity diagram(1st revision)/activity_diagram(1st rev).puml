@@ -1,0 +1,105 @@
+@startuml WAH4PCE_Interoperability_Activity_Diagram
+
+skinparam style strictuml
+skinparam SwimlaneBorderThickness 2
+skinparam ActivityBackgroundColor #E8F8F5
+skinparam ActivityBorderColor #117A65
+skinparam ArrowColor #2C3E50
+
+title WAH4PCE Interoperability - Traceable Activity Diagram\n(With Dashboard Tabs and Bidirectional Flows)
+
+|WAH4PCE Admin|
+|WAH (WAH4H/WAH4S/WAH4C)|
+|IPaaS (System & ADAPT)|
+|External (DOH iHomis)|
+
+' ==========================================
+' UC-01: Administer System (Code-Accurate Tabs)
+' ==========================================
+|WAH4PCE Admin|
+start
+:UC-01 (1): Opens IPaaS login portal\nand enters credentials;
+|IPaaS (System & ADAPT)|
+if (Valid Credentials?) then (No)
+  #FADBD8:UC-01 (Exc 1.1): Invalid Credentials;
+  stop
+else (Yes)
+  :UC-01 (1.1): Checks credentials\nand creates access token;
+  :UC-01 (1.2): Displays administration dashboard;
+endif
+
+|WAH4PCE Admin|
+fork
+  :View "Dashboard" Tab\n(System Health & Metrics);
+fork again
+  :View "Transaction Logs" Tab\n(Audit Trail);
+fork again
+  :View "Data Mapper" Tab\n(Quarantined Payloads);
+end fork
+:UC-01 (2): Selects management function\nand enters config changes;
+|IPaaS (System & ADAPT)|
+:UC-01 (2.1): Saves changes, updates routing state,\nand records in audit trail;
+stop
+
+' ==========================================
+' BIDIRECTIONAL REQUEST & PROVIDE DATA 
+' ==========================================
+|IPaaS (System & ADAPT)|
+start
+if (Who initiates the transaction?) then (iHOMIS)
+  |External (DOH iHomis)|
+  :UC-06 (1): iHOMIS sends Request / Provides Data;
+else (WAH)
+  |WAH (WAH4H/WAH4S/WAH4C)|
+  :UC-07/08 (1): WAH sends Request / Provides Data;
+endif
+
+|IPaaS (System & ADAPT)|
+:UC-06/07 (1.1): Checks actor's identity,\ntoken, and authorization scope;
+note right: Both iHOMIS and WAH can initiate\ntransactions bidirectionally (vice versa).
+
+' Start UC-02 Provide Health Data
+:UC-02 (1.1): Starts core processing pipeline\nand checks incoming API payload;
+
+' Start UC-03 Validate Schema & Completeness
+:UC-03 (1.1): Receives payload from core pipeline;
+:UC-03 (1.2): Validates required routing fields\n(source, target, destination format);
+if (Validation Fails?) then (Yes)
+  #FADBD8:UC-03 (Exc 1.2): Validation Failure\n(Returns HTTP 400 Bad Request);
+  stop
+else (No)
+endif
+
+' Start UC-05 Validate Privacy Consent (Moved to match actual Code sequence)
+:UC-05 (1.1): Reads the 'consent_signed' flag\nfrom the transaction payload;
+if (Consent Denied?) then (Yes)
+  #FADBD8:UC-05 (Exc 1.3): Consent Denied\n(Status: QUARANTINED, Returns HTTP 422);
+  stop
+else (No)
+  :UC-05 (1.2): Approves payload for AI transformation;
+endif
+
+' Start UC-04 Translate Data (AI Engine)
+:UC-04 (1.1): Sends validated payload to\nADAPT AI transformation engine;
+:UC-04 (1.2): AI analyzes source format\nand applies intelligent mapping rules;
+if (AI Mapping Fails or Output Invalid?) then (Yes)
+  #FADBD8:UC-04 (Exc 1.2): Mapping Failure\n(Status: QUARANTINED, Returns HTTP 422);
+  stop
+else (No)
+  :UC-04 (1.3): Completes AI transformation and returns\nstandardized payload to pipeline;
+endif
+
+' Finish UC-02
+:UC-02 (1.2): Updates transaction status to SUCCESS;
+:UC-02 (1.3): Returns HTTP 200 OK and\nroutes via webhook to destination;
+
+if (Who is the destination?) then (WAH)
+  |WAH (WAH4H/WAH4S/WAH4C)|
+  :UC-07 (1.3): Receives formatted\nFHIR R4 response;
+else (iHOMIS)
+  |External (DOH iHomis)|
+  :UC-06 (1.3): Receives formatted\nHL7 v2 response;
+endif
+stop
+
+@enduml

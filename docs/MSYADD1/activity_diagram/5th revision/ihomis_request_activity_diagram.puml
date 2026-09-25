@@ -1,0 +1,90 @@
+@startuml iHOMIS_Request_Activity_Diagram
+
+skinparam style strictuml
+skinparam SwimlaneBorderThickness 2
+skinparam ActivityBackgroundColor #E8F8F5
+skinparam ActivityBorderColor #117A65
+skinparam ArrowColor #2C3E50
+
+title iHOMIS Request to WAH (HL7 Data) - Activity Diagram
+
+|External (DOH iHomis)|
+|IPaaS (System & ADAPT)|
+|WAH (WAH4H/WAH4S/WAH4C)|
+
+|External (DOH iHomis)|
+start
+:UC-06 (1): iHOMIS sends health-data query;\nIPaaS authenticates and queues request;
+|WAH (WAH4H/WAH4S/WAH4C)|
+:UC-06 (2): WAH Data Owner reviews request\nin portal and clicks approve;
+if (Request Approved?) then (No)
+  #FADBD8:UC-06 (Exc 1.1): Request Declined\n(iHOMIS request HL7 Data);
+  stop
+else (Yes)
+  :UC-06 (2.1): Extracts requested patient records\nfrom local source database;
+  if (Data Found?) then (No)
+    #FADBD8:UC-06 (Exc 2.1): Data Not Found\n(Returns HTTP 404 Not Found);
+    stop
+  else (Yes)
+    :UC-06 (2.2): Sends data to Provide Health Data pipeline;
+  endif
+endif
+
+|IPaaS (System & ADAPT)|
+' Start UC-02 Provide Health Data
+:UC-02 (1.1): Starts the core processing pipeline\nand checks the incoming API payload;
+if (Pipeline Failure?) then (Yes)
+  #FADBD8:UC-02 (Exc 1.1): Pipeline Failure\n(Returns HTTP 500 & alerts Admin);
+  stop
+else (No)
+endif
+
+' Start UC-03 Validate Schema & Completeness
+:UC-02 (1.2) / UC-03: Includes Validate Schema\n& Completeness to check the data;
+:UC-03 (1.1): Receives the payload from the core pipeline;
+:UC-03 (1.2): Validates required routing fields\n(source_system, target_org, destination_format);
+if (Validation Fails?) then (Yes)
+  #FADBD8:UC-03 (Exc 1.2): Validation Failure\n(Returns HTTP 400 Bad Request);
+  stop
+else (No)
+  :UC-03 (1.3): Sends a validation-success\nconfirmation back to the core pipeline;
+endif
+
+' Start UC-05 Validate Privacy Consent
+:UC-02 (1.3) / UC-05: Includes Validate Privacy\nConsent to verify consent_signed flag;
+:UC-05 (1.1): Reads the consent_signed flag\nfrom the transaction payload;
+:UC-05 (1.2): Checks the consent registry\nfor applicable sharing rules;
+:UC-05 (1.3): Compares consent rules\nwith the current transaction;
+if (Consent Denied?) then (Yes)
+  #FADBD8:UC-05 (Exc 1.3): Consent Denied\n(Status: QUARANTINED, Returns HTTP 422);
+  stop
+else (No)
+  :UC-05 (1.4): Sends an approval token to ADAPT\nwhen the transaction is allowed;
+endif
+
+' Start UC-04 Translate Data (AI Engine)
+if (Source and destination formats differ?) then (Yes)
+  :UC-02 (1.4) / UC-04 (1.1): Includes Translate Data\nto transform the payload;
+  :UC-04 (1.2): ADAPT analyzes the source format and\nattempts to apply the required AI mapping rules;
+  if (AI Mapping Fails?) then (Yes)
+    #FCF3CF:UC-04 (1.3): Triggers fallback and switches to a\ndeterministic algorithmic transformation;
+    if (Algorithmic Mapping Fails?) then (Yes)
+      #FADBD8:UC-04 (Exc 1.2): Mapping Failure\n(Status: QUARANTINED, Returns HTTP 422);
+      stop
+    else (No)
+      :UC-04 (1.4): Completes the transformation and returns\nthe standardized payload to the pipeline;
+    endif
+  else (No)
+    :UC-04 (1.4): Completes the transformation and returns\nthe standardized payload to the pipeline;
+  endif
+else (No)
+endif
+
+' Finish UC-02
+:UC-02 (1.5): Updates transaction status to SUCCESS,\ndispatches the payload via webhook,\nand returns HTTP 200 OK;
+
+|External (DOH iHomis)|
+:UC-06 (1.3): Receives formatted\nHL7 v2 response;
+stop
+
+@enduml

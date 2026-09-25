@@ -9,9 +9,7 @@ skinparam ArrowColor #2C3E50
 title WAH4PCE Interoperability - Traceable Activity Diagram\n(With Dashboard Tabs and Bidirectional Flows)
 
 |WAH4PCE Admin|
-|WAH (WAH4H/WAH4S/WAH4C)|
 |IPaaS (System & ADAPT)|
-|External (DOH iHomis)|
 
 ' ==========================================
 ' UC-01: Administer System (Code-Accurate Tabs)
@@ -25,138 +23,56 @@ if (Valid Credentials?) then (No)
   stop
 else (Yes)
   :UC-01 (1.1): Validates credentials with Identity\nProvider and issues access token;
-  :UC-01 (1.2): Displays the administration dashboard;
+  :UC-01 (1.2): Displays default Dashboard tab;
 endif
 
 |WAH4PCE Admin|
-fork
-  :View "Dashboard" Tab\n(System Health & Metrics);
-fork again
-  :UC-01 (2): Navigates to Transaction Logs tab;
-  :UC-01 (2.1): Displays table of transaction records\n(ID, Source, Dest, Status, Error, Created);
-  :UC-01 (3): Clicks Status or Source dropdowns;
-  :UC-01 (3.1): Prepares selected filter parameters;
-  :UC-01 (4): Clicks "Refresh" button;
-  :UC-01 (4.1): Queries system and refreshes\nlist of transaction records;
-fork again
-  :UC-01 (5): Navigates to Data Mapper;
-  :UC-01 (5.1): Opens interface with transaction dropdown\nand Refresh control;
-  :UC-01 (6): Selects transaction log from dropdown;
-  :UC-01 (6.1): Identifies selected transaction record;
-  :UC-01 (7): Clicks "Refresh" button in Data Mapper;
-  :UC-01 (7.1): Displays side-by-side view of raw input\nand transformed output (SHA-256 hashed);
-  if (Action) then (Unhash)
-    :UC-01 (8): Clicks the "Unhash" button on the payloads;
-    :UC-01 (8.1): Reveals unhashed JSON payloads\nside-by-side for visual verification;
-  else (Comparison Table)
-    :UC-01 (9): Clicks the "Comparison Table" button in the Data Mapper view;
-    :UC-01 (9.1): Switches to a tabular comparison view\ndetailing mapped fields and statuses;
-  endif
-end fork
+:View "Dashboard" Tab (Default)\n(System Health & Metrics);
+
+repeat
+  switch (Tab Selection)
+  case (Dashboard)
+    :View "Dashboard" Tab\n(System Health & Metrics);
+  case (Transaction Logs)
+    :UC-01 (2): Navigates to Transaction Logs tab;
+    :UC-01 (2.1): Displays table of transaction records\n(ID, Source, Dest, Status, Error, Created);
+    switch (Perform Action?)
+    case (Filter)
+      :UC-01 (3): Clicks Status or Source dropdowns;
+      :UC-01 (3.1): Prepares selected filter parameters;
+    case (Refresh)
+      :UC-01 (4): Clicks "Refresh" button;
+      :UC-01 (4.1): Queries system and refreshes\nlist of transaction records;
+    case (None)
+    endswitch
+  case (Data Mapper)
+    :UC-01 (5): Navigates to Data Mapper;
+    :UC-01 (5.1): Opens interface with transaction dropdown\nand Refresh control;
+    
+    switch (Perform Action?)
+    case (Select Log)
+      :UC-01 (6): Selects transaction log from dropdown;
+      :UC-01 (6.1): Identifies selected transaction record;
+    case (Refresh)
+      :UC-01 (7): Clicks "Refresh" button in Data Mapper;
+      :UC-01 (7.1): Displays side-by-side view of raw input\nand transformed output (SHA-256 hashed);
+    case (None)
+    endswitch
+
+    switch (View Options?)
+    case (Unhash View)
+      :UC-01 (8): Clicks the "Unhash" button on the payloads;
+      :UC-01 (8.1): Reveals unhashed JSON payloads\nside-by-side for visual verification;
+    case (Comparison Table)
+      :UC-01 (9): Clicks the "Comparison Table" button in the Data Mapper view;
+      :UC-01 (9.1): Switches to a tabular comparison view\ndetailing mapped fields and statuses;
+    case (None)
+    endswitch
+  endswitch
+repeat while (Switch Tab?) is (Yes)
+-> (No);
 stop
 
-' ==========================================
-' BIDIRECTIONAL REQUEST & PROVIDE DATA 
-' ==========================================
-|IPaaS (System & ADAPT)|
-start
-if (Transaction Type) then (FHIR R4)
-  |WAH (WAH4H/WAH4S/WAH4C)|
-  :UC-07 (1): Actor sends REST request for FHIR R4;\nIPaaS authenticates and queues request;
-  :UC-07 (2): iHOMIS Data Owner reviews request in\ntheir portal and clicks approve;
-  if (Request Approved?) then (No)
-    #FADBD8:UC-07 (Exc 1.1): Request Declined\n(WAH request FHIR R4);
-    stop
-  else (Yes)
-    :UC-07 (2.1): Extracts requested patient records\nfrom source FHIR repository;
-    if (Data Found?) then (No)
-      #FADBD8:UC-07 (Exc 2.1): Data Not Found\n(Returns HTTP 404 Not Found);
-      stop
-    else (Yes)
-      :UC-07 (2.2): Routes secure FHIR response\nvia Provide Health Data pipeline;
-    endif
-  endif
 
-else (HL7 Data)
-  |External (DOH iHomis)|
-  :UC-06 (1): iHOMIS sends health-data query;\nIPaaS authenticates and queues request;
-  :UC-06 (2): WAH Data Owner reviews request\nin portal and clicks approve;
-  if (Request Approved?) then (No)
-    #FADBD8:UC-06 (Exc 1.1): Request Declined\n(iHOMIS request HL7 Data);
-    stop
-  else (Yes)
-    :UC-06 (2.1): Extracts requested patient records\nfrom local source database;
-    if (Data Found?) then (No)
-      #FADBD8:UC-06 (Exc 2.1): Data Not Found\n(Returns HTTP 404 Not Found);
-      stop
-    else (Yes)
-      :UC-06 (2.2): Sends data to Provide Health Data pipeline;
-    endif
-  endif
-endif
-
-|IPaaS (System & ADAPT)|
-
-' Start UC-02 Provide Health Data
-:UC-02 (1.1): Starts the core processing pipeline\nand checks the incoming API payload;
-if (Pipeline Failure?) then (Yes)
-  #FADBD8:UC-02 (Exc 1.1): Pipeline Failure\n(Returns HTTP 500 & alerts Admin);
-  stop
-else (No)
-endif
-
-' Start UC-03 Validate Schema & Completeness
-:UC-02 (1.2) / UC-03: Includes Validate Schema\n& Completeness to check the data;
-:UC-03 (1.1): Receives the payload from the core pipeline;
-:UC-03 (1.2): Validates required routing fields\n(source_system, target_org, destination_format);
-if (Validation Fails?) then (Yes)
-  #FADBD8:UC-03 (Exc 1.2): Validation Failure\n(Returns HTTP 400 Bad Request);
-  stop
-else (No)
-  :UC-03 (1.3): Sends a validation-success\nconfirmation back to the core pipeline;
-endif
-
-' Start UC-05 Validate Privacy Consent
-:UC-02 (1.3) / UC-05: Includes Validate Privacy\nConsent to verify consent_signed flag;
-:UC-05 (1.1): Reads the consent_signed flag\nfrom the transaction payload;
-:UC-05 (1.2): Checks the consent registry\nfor applicable sharing rules;
-:UC-05 (1.3): Compares consent rules\nwith the current transaction;
-if (Consent Denied?) then (Yes)
-  #FADBD8:UC-05 (Exc 1.3): Consent Denied\n(Status: QUARANTINED, Returns HTTP 422);
-  stop
-else (No)
-  :UC-05 (1.4): Sends an approval token to ADAPT\nwhen the transaction is allowed;
-endif
-
-' Start UC-04 Translate Data (AI Engine)
-if (Source and destination formats differ?) then (Yes)
-  :UC-02 (1.4) / UC-04 (1.1): Includes Translate Data\nto transform the payload;
-  :UC-04 (1.2): ADAPT analyzes the source format and\nattempts to apply the required AI mapping rules;
-  if (AI Mapping Fails?) then (Yes)
-    #FCF3CF:UC-04 (1.3): Triggers fallback and switches to a\ndeterministic algorithmic transformation;
-    if (Algorithmic Mapping Fails?) then (Yes)
-      #FADBD8:UC-04 (Exc 1.2): Mapping Failure\n(Status: QUARANTINED, Returns HTTP 422);
-      stop
-    else (No)
-      :UC-04 (1.4): Completes the transformation and returns\nthe standardized payload to the pipeline;
-    endif
-  else (No)
-    :UC-04 (1.4): Completes the transformation and returns\nthe standardized payload to the pipeline;
-  endif
-else (No)
-endif
-
-' Finish UC-02
-:UC-02 (1.5): Updates transaction status to SUCCESS,\ndispatches the payload via webhook,\nand returns HTTP 200 OK;
-
-if (Who is the destination?) then (WAH)
-  |WAH (WAH4H/WAH4S/WAH4C)|
-  :UC-07 (1.3): Receives formatted\nFHIR R4 response;
-  stop
-else (iHOMIS)
-  |External (DOH iHomis)|
-  :UC-06 (1.3): Receives formatted\nHL7 v2 response;
-  stop
-endif
 
 @enduml

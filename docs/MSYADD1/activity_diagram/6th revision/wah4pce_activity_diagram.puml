@@ -1,0 +1,78 @@
+@startuml WAH4PCE_Interoperability_Activity_Diagram
+
+skinparam style strictuml
+skinparam SwimlaneBorderThickness 2
+skinparam ActivityBackgroundColor #E8F8F5
+skinparam ActivityBorderColor #117A65
+skinparam ArrowColor #2C3E50
+
+title WAH4PCE Interoperability - Traceable Activity Diagram\n(With Dashboard Tabs and Bidirectional Flows)
+
+|WAH4PCE Admin|
+|IPaaS (System & ADAPT)|
+
+' ==========================================
+' UC-01: Administer System (Code-Accurate Tabs)
+' ==========================================
+|WAH4PCE Admin|
+start
+:UC-01 (1): Admin logs into IPaaS portal\n(Requires MFA);
+|IPaaS (System & ADAPT)|
+if (Valid Credentials?) then (No)
+  #FADBD8:UC-01 (Exc 1.1): Invalid Credentials;
+  stop
+else (Yes)
+  :UC-01 (1.1): Validates credentials with Identity\nProvider and issues access token;
+  :UC-01 (1.2): Displays default Dashboard tab;
+endif
+
+|WAH4PCE Admin|
+:View "Dashboard" Tab (Default)\n(System Health & Metrics);
+
+repeat
+  switch (Tab Selection)
+  case (Dashboard)
+    :View "Dashboard" Tab\n(System Health & Metrics);
+  case (Transaction Logs)
+    :UC-01 (2): Navigates to Transaction Logs tab;
+    :UC-01 (2.1): Displays table of transaction records\n(ID, Source, Dest, Status, Error, Created);
+    switch (Perform Action?)
+    case (Filter)
+      :UC-01 (3): Clicks Status or Source dropdowns;
+      :UC-01 (3.1): Prepares selected filter parameters;
+    case (Refresh)
+      :UC-01 (4): Clicks "Refresh" button;
+      :UC-01 (4.1): Queries system and refreshes\nlist of transaction records;
+    case (None)
+    endswitch
+  case (Data Mapper)
+    :UC-01 (5): Navigates to Data Mapper;
+    :UC-01 (5.1): Opens interface with transaction dropdown\nand Refresh control;
+    
+    switch (Perform Action?)
+    case (Select Log)
+      :UC-01 (6): Selects transaction log from dropdown;
+      :UC-01 (6.1): Identifies selected transaction record;
+    case (Refresh)
+      :UC-01 (7): Clicks "Refresh" button in Data Mapper;
+      :UC-01 (7.1): Displays side-by-side view of raw input\nand transformed output (SHA-256 hashed);
+    case (None)
+    endswitch
+
+    switch (View Options?)
+    case (Unhash View)
+      :UC-01 (8): Clicks the "Unhash" button on the payloads;
+      :UC-01 (8.1): Reveals unhashed JSON payloads\nside-by-side for visual verification;
+    case (Comparison Table)
+      :UC-01 (9): Clicks the "Comparison Table" button in the Data Mapper view;
+      :UC-01 (9.1): Switches to a tabular comparison view\ndetailing mapped fields and statuses;
+    case (None)
+    endswitch
+  endswitch
+repeat while (Switch Tab?) is (Yes)
+-> (No);
+stop
+
+
+
+@enduml

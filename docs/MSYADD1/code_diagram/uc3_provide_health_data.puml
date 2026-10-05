@@ -1,0 +1,34 @@
+@startuml UC3_Provide_Health_Data
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 4 — Code Diagram: UC3 Provide Health Data
+
+Person(clinician, "Clinician / Staff", "Reviews incoming request in inbox, fills patient record, and approves submission.")
+
+Container_Boundary(ihomis, "iHOMIS Portal (React/Next.js)") {
+    Component(save_page, "SavePage\n/app/(portal)/save/page.tsx", "React Component", "Multi-step form (Demographics, Diagnosis, Consent). Calls handleSave(). Checks consentSigned===true before proceeding. POSTs to /api/ingest.")
+    Component(ihomis_ingest_proxy, "POST /api/ingest\n/app/api/ingest/route.ts (iHOMIS)", "Next.js Route Handler", "Receives form data. Packages as HL7V2-style payload. Forwards to ADAPT iPaaS /api/v1/ingest with {source_system:'iHOMIS', destination_system:'WAH', source_format:'HL7V2', consent_signed:true}.")
+}
+
+Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
+    Component(adapt_ingest_handler, "IngestHandler\ninternal/handlers/ingest.go", "Go HTTP Handler", "Main ingestion pipeline. Validates fields (HTTP 400). Checks consent (HTTP 422). Inserts PENDING. Updates to TRANSFORMING. Calls AI. Validates output. Forwards to WAH.")
+    Component(mongo_update, "UpdateStatus()\ninternal/db/mongodb.go", "MongoDB Repository", "Progressively updates adapt_transaction_logs document status:\nPENDING -> TRANSFORMING -> SUCCESS | QUARANTINED")
+    Component(ai_service, "TransformWithAI()\ninternal/services/ai_service.go", "AI Service", "Transforms HL7V2 payload to FHIR R4 Bundle via Local Llama 3 API.")
+    Component(validator_svc, "ValidateTransformation()\ninternal/services/validator.go", "Validation Service", "Checks FHIR R4 output has required fields. Returns valid boolean and error strings.")
+}
+
+Container_Boundary(wah, "WAH Hospital (React/Next.js)") {
+    Component(wah_webhook, "POST /api/webhook\n/app/api/webhook/route.ts", "Next.js Route Handler", "Receives transformed FHIR R4 Bundle from ADAPT. Stores as incoming patient record in WAH local store.")
+}
+
+Rel(clinician, save_page, "Fills patient record and ticks consent checkbox", "Browser")
+Rel(save_page, ihomis_ingest_proxy, "handleSave() calls\nfetch('/api/ingest', {method:'POST', body: HL7 payload + consent_signed:true})", "HTTP POST")
+Rel(ihomis_ingest_proxy, adapt_ingest_handler, "HTTP POST /api/v1/ingest\nbody: {source_system:'iHOMIS', destination_system:'WAH', payload, consent_signed:true}", "HTTP POST / JSON")
+Rel(adapt_ingest_handler, mongo_update, "repo.UpdateStatus(txID, 'TRANSFORMING')", "Function Call")
+Rel(adapt_ingest_handler, ai_service, "aiService.TransformWithAI(payload, 'HL7V2_TO_FHIR_R4')", "Function Call")
+Rel(adapt_ingest_handler, validator_svc, "validator.ValidateTransformation(transformedData, direction)", "Function Call")
+Rel(adapt_ingest_handler, mongo_update, "If valid: repo.UpdateStatus(txID, 'SUCCESS')", "Function Call")
+Rel(adapt_ingest_handler, wah_webhook, "HTTP POST WAH_WEBHOOK_URL\nbody: {transaction_id, source_system:'iHOMIS', payload: FHIRBundle}", "HTTP POST / JSON")
+Rel(adapt_ingest_handler, ihomis_ingest_proxy, "Returns HTTP 200\n{success:true, transaction_id, status:'SUCCESS', forwarded:true}", "HTTP 200 JSON")
+
+@enduml

@@ -1,0 +1,30 @@
+@startuml UC1_Request_Health_Data
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 4 — Code Diagram: UC1 Request Health Data (Example: HL7)
+
+Person(clinician, "Clinician / Staff", "Initiates a health data request from iHOMIS portal.")
+
+Container_Boundary(ihomis, "iHOMIS Portal (React/Next.js)") {
+    Component(request_page, "RequestPage\n/app/(portal)/request/page.tsx", "React Component", "Form UI. Collects PhilHealth No., patient name, reason. On submit calls handleSubmit() which POSTs to local /api/request.")
+    Component(ihomis_request_api, "POST /api/request\n/app/api/request/route.ts", "Next.js Route Handler", "Validates form payload. Forwards to ADAPT iPaaS POST /api/v1/request. Returns {request_id, transaction_id}.")
+}
+
+Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
+    Component(adapt_request_handler, "RequestHandler\ninternal/handlers/request.go", "Go HTTP Handler", "Determines direction (iHOMIS->WAH). Calls DB to insert PENDING transaction. Forwards request to WAH /api/requests.")
+    Component(mongo_insert, "InsertTransaction()\ninternal/db/mongodb.go", "MongoDB Repository", "Inserts new document into adapt_transaction_logs collection with status='PENDING', source_format='HL7V2', destination_format='FHIR_R4'.")
+}
+
+Container_Boundary(wah, "WAH Hospital (React/Next.js)") {
+    Component(wah_requests_api, "POST /api/requests\n/app/api/requests/route.ts", "Next.js Route Handler", "Receives forwarded request from ADAPT. Stores request_id in local WAH request store. Notifies WAH inbox for review.")
+}
+
+Rel(clinician, request_page, "Fills and submits request form", "Browser")
+Rel(request_page, ihomis_request_api, "handleSubmit() calls\nfetch('/api/request', {method:'POST', body:{philhealth_no, patient_name, reason}})", "HTTP POST")
+Rel(ihomis_request_api, adapt_request_handler, "HTTP POST /api/v1/request\nbody: {requesting_org:'iHOMIS', philhealth_no, patient_name}", "HTTP POST / JSON")
+Rel(adapt_request_handler, mongo_insert, "repo.InsertTransaction(tx)", "Function Call")
+Rel(mongo_insert, adapt_request_handler, "Returns ObjectID", "Return")
+Rel(adapt_request_handler, wah_requests_api, "HTTP POST WAH_API_URL + '/requests'\nbody: {request_id, requesting_org, ipaas_transaction_id}", "HTTP POST / JSON")
+Rel(adapt_request_handler, ihomis_request_api, "Returns HTTP 200\n{success:true, transaction_id, status:'PENDING'}", "HTTP 200 JSON")
+
+@enduml

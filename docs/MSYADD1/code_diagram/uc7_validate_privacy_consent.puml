@@ -1,0 +1,39 @@
+@startuml UC7_Validate_Privacy_Consent
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 4 — Code Diagram: UC7 Validate Privacy Consent
+
+note as N1
+  This use case is an <<include>> of UC6: Translate Data.
+  Consent is enforced at two layers:
+  1. Frontend UI: blocks form submission if checkbox is not checked.
+  2. Backend API: ADAPT iPaaS rejects and quarantines if consent_signed !== true.
+  Legal basis: Republic Act 10173 — Data Privacy Act of 2012.
+end note
+
+Person(patient, "Patient", "Reads and physically ticks the Data Privacy and Consent checkbox before record submission is allowed.")
+
+Container_Boundary(ihomis, "iHOMIS Portal (React/Next.js)") {
+    Component(save_page_consent, "SavePage — Consent Section\n/app/(portal)/save/page.tsx", "React Component", "State: consentSigned (boolean, default false).\nhandleSave(): if (!consentSigned) { showToast('Please agree...'); return; }\nOnly proceeds to fetch('/api/ingest') if consentSigned===true.")
+}
+
+Container_Boundary(wah, "WAH Hospital (React/Next.js)") {
+    Component(wah_save_consent, "SavePage — Consent Section\n/app/save/page.tsx", "React Component", "Identical consent enforcement as iHOMIS.\nState: consentSigned (boolean, default false).\nhandleSave() blocked if consentSigned===false. Shows error toast.")
+}
+
+Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
+    Component(adapt_consent_check, "IngestHandler — Consent Guard\ninternal/handlers/ingest.go", "Go HTTP Handler", "Server-side second layer of enforcement.\nReads consent_signed from request body.\nif (!consent_signed) -> INSERT QUARANTINED record, return HTTP 422.\nError message references RA 10173 explicitly.")
+
+    Component(mongo_quarantine, "InsertQuarantinedTransaction()\ninternal/db/mongodb.go", "MongoDB Repository", "Persists quarantine record in adapt_transaction_logs collection:\nstatus='QUARANTINED'\nerror_message='Patient data privacy consent form not signed... per Republic Act 10173 (Data Privacy Act of 2012).'")
+}
+
+Rel(patient, save_page_consent, "Reads DPA notice and ticks 'I agree' checkbox", "Browser")
+Rel(patient, wah_save_consent, "Reads DPA notice and ticks 'I agree' checkbox", "Browser")
+
+Rel(save_page_consent, adapt_consent_check, "if consentSigned===true:\nHTTP POST /api/v1/ingest\nbody: {...patientData, consent_signed: true}", "HTTP POST / JSON")
+Rel(wah_save_consent, adapt_consent_check, "if consentSigned===true:\nHTTP POST /api/v1/ingest\nbody: {...patientData, consent_signed: true}", "HTTP POST / JSON")
+
+Rel(adapt_consent_check, mongo_quarantine, "if !consent_signed:\nrepo.InsertQuarantinedTransaction(tx, RA10173_MSG)", "Function Call")
+Rel(adapt_consent_check, patient, "HTTP 422 Unprocessable Entity\n{success:false, status:'QUARANTINED',\nmessage:'...per Republic Act 10173 (Data Privacy Act of 2012).'}", "HTTP 422 JSON")
+
+@enduml

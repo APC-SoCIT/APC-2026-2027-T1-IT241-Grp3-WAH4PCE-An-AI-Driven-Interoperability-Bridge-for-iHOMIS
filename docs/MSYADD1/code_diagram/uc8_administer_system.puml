@@ -1,0 +1,54 @@
+@startuml UC8_Administer_System
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 4 — Code Diagram: UC8 Administer System
+
+Person(admin, "System Admin", "Logs in to ADAPT iPaaS, monitors KPI metrics, reviews transaction logs, and inspects mapped payloads in the Data Mapper.")
+
+Container_Boundary(adapt_frontend, "ADAPT Admin Dashboard (React/Next.js)") {
+
+    Component(auth_middleware, "Middleware (Proxy)\n/middleware.ts", "Next.js Proxy Middleware", "Guards all non-auth routes. Validates session cookie on every request. Redirects unauthenticated users to /login with HTTP 302.")
+
+    Component(login_page, "LoginPage\n/app/(auth)/login/page.tsx", "React Component", "Login form (username, password). On submit calls POST /api/auth/login. On success redirects to dashboard.")
+
+    Component(dashboard_page, "DashboardPage\n/app/page.tsx", "React Component", "Displays 5 KPI metric cards: Total Records, Success Rate, Avg Mapping Score, Pending, Quarantined. Auto-refreshes via setInterval every 30s calling Golang backend /api/v1/metrics.")
+
+    Component(transactions_page, "TransactionLogsPage\n/app/transactions/page.tsx", "React Component", "Paginated audit log table. Filterable by ?status= and ?source=.")
+
+    Component(mapper_page, "DataMapperPage\n/app/mapper/page.tsx", "React Component", "Side-by-side payload inspector. Displays raw_payload vs transformed_payload. SHA-256 hashed by default for PHI protection.")
+}
+
+Container_Boundary(adapt_backend, "ADAPT iPaaS Middleware (Golang)") {
+
+    Component(auth_handler, "AuthHandler\ninternal/handlers/auth.go", "Go HTTP Handler", "Validates admin credentials against MongoDB. Generates and returns JWT token as HTTP-only cookie.")
+
+    Component(metrics_handler, "MetricsHandler\ninternal/handlers/metrics.go", "Go HTTP Handler", "Aggregates adapt_transaction_logs:\n- total_records, success_rate, pending_count, quarantined_count\n- ihomis_to_wah count, wah_to_ihomis count\nReturns JSON metrics object.")
+
+    Component(tx_handler, "TransactionsHandler\ninternal/handlers/transactions.go", "Go HTTP Handler", "Reads adapt_transaction_logs with optional query filters (status, source_system). Orders by created_at DESC.")
+
+    Component(mongo_repo, "MongoRepository\ninternal/db/mongodb.go", "MongoDB Repository", "Shared MongoDB data access layer. Executes aggregate pipelines for metrics and find() queries for transactions.")
+}
+
+SystemDb_Ext(mongodb, "MongoDB", "Stores all transaction logs, user credentials, and audit records in document collections.")
+
+Rel(admin, login_page, "Enters username and password", "Browser")
+Rel(login_page, auth_handler, "HTTP POST /api/v1/auth/login\n{username, password}", "HTTP POST")
+Rel(auth_handler, mongo_repo, "repo.VerifyCredentials(username, hash)", "Function Call")
+Rel(mongo_repo, mongodb, "db.collection('users').findOne()", "Mongo Wire Protocol")
+Rel(auth_handler, admin, "Sets JWT session cookie, redirects to /\nHTTP 200 + Set-Cookie", "HTTP 200")
+Rel(auth_middleware, login_page, "Unauthenticated request intercepted\nredirects to /login", "HTTP 302")
+
+Rel(admin, dashboard_page, "Views live KPI metrics dashboard", "Browser (Authenticated)")
+Rel(dashboard_page, metrics_handler, "setInterval(fetchMetrics, 30000)\nHTTP GET /api/v1/metrics", "HTTP GET")
+Rel(metrics_handler, mongo_repo, "repo.GetMetricsAggregation()", "Function Call")
+Rel(mongo_repo, mongodb, "db.collection('adapt_transaction_logs').aggregate([...])", "Mongo Wire Protocol")
+
+Rel(admin, transactions_page, "Views full audit transaction log", "Browser (Authenticated)")
+Rel(transactions_page, tx_handler, "HTTP GET /api/v1/transactions?status=&source=", "HTTP GET")
+Rel(tx_handler, mongo_repo, "repo.GetTransactions(filters)", "Function Call")
+Rel(mongo_repo, mongodb, "db.collection('adapt_transaction_logs').find(filters)", "Mongo Wire Protocol")
+
+Rel(admin, mapper_page, "Selects transaction to inspect raw vs transformed payload", "Browser (Authenticated)")
+Rel(mapper_page, tx_handler, "HTTP GET /api/v1/transactions/:id", "HTTP GET")
+
+@enduml

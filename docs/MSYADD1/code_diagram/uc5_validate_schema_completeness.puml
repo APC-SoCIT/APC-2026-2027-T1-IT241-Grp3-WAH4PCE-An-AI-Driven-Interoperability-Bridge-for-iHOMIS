@@ -1,0 +1,33 @@
+@startuml UC5_Validate_Schema_Completeness
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 4 — Code Diagram: UC5 Validate Schema & Completeness
+
+note as N1
+  This use case is an <<include>> of UC6: Translate Data.
+  Triggered automatically inside POST /api/v1/ingest after AI transformation completes.
+  On failure: HTTP 400, status set to QUARANTINED in MongoDB.
+end note
+
+Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
+
+    Component(adapt_ingest_handler, "IngestHandler\ninternal/handlers/ingest.go", "Go HTTP Handler", "Pipeline orchestrator. After AI transform completes, calls validator.ValidateTransformation().\nIf !validation.Valid: updates MongoDB to QUARANTINED, returns HTTP 400.\nIf valid: proceeds to forward to destination system.")
+
+    Component(validator, "ValidateTransformation(data, direction)\ninternal/services/validator.go", "Validation Module", "Entry point. Reads direction string to determine target format.\nRoutes to validateFHIR() or validateHL7().\nReturns: {Valid: bool, Errors: []string}")
+
+    Component(fhir_check, "validateFHIR(data)\ninternal/services/validator.go", "FHIR R4 Validator", "Checks required FHIR R4 Bundle fields:\n- resourceType === 'Bundle'\n- entry[].resource.resourceType present\n- Patient: name, birthDate, identifier (PhilHealth No.), address\nAppends missing fields to Errors slice.")
+
+    Component(hl7_check, "validateHL7(data)\ninternal/services/validator.go", "HL7 v2 Validator", "Checks required HL7v2 payload fields:\n- MSH segment (message_header) present\n- PID segment present\n- patient_id (PhilHealth No.)\n- patient_name, date_of_birth\nAppends missing fields to Errors slice.")
+
+    Component(mongo_quarantine, "UpdateStatusQuarantined()\ninternal/db/mongodb.go", "MongoDB Repository", "On validation failure: updates adapt_transaction_logs document.\nSets status='QUARANTINED', stores error_message listing all failed field checks.")
+}
+
+Rel(adapt_ingest_handler, validator, "validator.ValidateTransformation(transformResult.Data, direction)", "Function Call")
+Rel(validator, fhir_check, "if direction == 'HL7V2_TO_FHIR_R4'\nChecks FHIR R4 output structure", "Function Call")
+Rel(validator, hl7_check, "if direction == 'FHIR_R4_TO_HL7V2'\nChecks HL7v2 output structure", "Function Call")
+Rel(fhir_check, validator, "Returns {Valid, Errors}", "Return")
+Rel(hl7_check, validator, "Returns {Valid, Errors}", "Return")
+Rel(validator, adapt_ingest_handler, "Returns ValidationResult struct", "Return")
+Rel(adapt_ingest_handler, mongo_quarantine, "if !validation.Valid:\nrepo.UpdateStatusQuarantined(txID, strings.Join(errors, '; '))", "Function Call")
+
+@enduml

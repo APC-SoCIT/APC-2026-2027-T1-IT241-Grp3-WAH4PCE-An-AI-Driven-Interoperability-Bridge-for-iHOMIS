@@ -1,30 +1,68 @@
 @startuml UC2_Request_FHIR4_Health_Data
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-
+!theme plain
 title C4 Level 4 — Code Diagram: UC2 Request FHIR 4 Health Data (extends UC1)
 
-Person(wah_staff, "WAH Staff", "Initiates a FHIR R4 data request from WAH portal targeting iHOMIS records.")
-
-Container_Boundary(wah, "WAH Hospital (React/Next.js)") {
-    Component(wah_request_page, "RequestDataPage\n/app/request-data/page.tsx", "React Component", "Form UI. Sets destination_format='FHIR_R4'. Submits to local /api/requests with requesting_org='WAH'.")
-    Component(wah_request_api, "POST /api/requests\n/app/api/requests/route.ts", "Next.js Route Handler", "Constructs body with {requesting_org:'WAH', destination_format:'FHIR_R4'}. POSTs to ADAPT /api/v1/request.")
+package "WAH Hospital (React/Next.js)" {
+    class RequestDataPage {
+        + handleSubmit()
+    }
+    class "POST /api/requests" as WAHRequestAPI <<Route Handler>> {
+        + POST(req: Request)
+    }
 }
 
-Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
-    Component(adapt_request_handler, "RequestHandler\ninternal/handlers/request.go", "Go HTTP Handler", "Detects isWAHRequesting=true. Sets srcFormat='HL7V2', dstFormat='FHIR_R4'. Calls DB to log PENDING. Forwards to iHOMIS /api/incoming-requests.")
-    Component(mongo_insert, "InsertTransaction()\ninternal/db/mongodb.go", "MongoDB Repository", "Inserts document into adapt_transaction_logs collection with source_format='HL7V2', destination_format='FHIR_R4', status='PENDING'.")
+package "ADAPT iPaaS Middleware (Golang)" {
+    class RequestHandler <<struct>> {
+        + mongoRepo: MongoDBRepository
+        + HandleRequest(w: ResponseWriter, r: Request)
+    }
+    class MongoDBRepository <<struct>> {
+        + InsertTransaction(tx: Transaction): ObjectID
+    }
 }
 
-Container_Boundary(ihomis, "iHOMIS Portal (React/Next.js)") {
-    Component(ihomis_incoming_api, "POST /api/incoming-requests\n/app/api/incoming-requests/route.ts", "Next.js Route Handler", "Receives forwarded data request from ADAPT. Stores in iHOMIS request store. Shows in clinician inbox for approval.")
+package "iHOMIS Portal (React/Next.js)" {
+    class "POST /api/incoming-requests" as iHOMISIncomingAPI <<Route Handler>> {
+        + POST(req: Request)
+    }
 }
 
-Rel(wah_staff, wah_request_page, "Fills FHIR R4 data request form", "Browser")
-Rel(wah_request_page, wah_request_api, "handleSubmit() calls\nfetch('/api/requests', {method:'POST', body:{requesting_org:'WAH', destination_format:'FHIR_R4'}})", "HTTP POST")
-Rel(wah_request_api, adapt_request_handler, "HTTP POST /api/v1/request\nbody: {requesting_org:'WAH', destination_format:'FHIR_R4', philhealth_no}", "HTTP POST / JSON")
-Rel(adapt_request_handler, mongo_insert, "repo.InsertTransaction(tx)", "Function Call")
-Rel(mongo_insert, adapt_request_handler, "Returns ObjectID", "Return")
-Rel(adapt_request_handler, ihomis_incoming_api, "HTTP POST PORTAL_API_URL + '/incoming-requests'\nbody: {requesting_system:'WAH', ipaas_transaction_id, philhealth_no}", "HTTP POST / JSON")
-Rel(adapt_request_handler, wah_request_api, "Returns HTTP 200\n{success:true, transaction_id, status:'PENDING'}", "HTTP 200 JSON")
+class "WAH Staff" as WAHStaff <<Actor>>
+
+WAHStaff --> RequestDataPage : Fills FHIR R4 data request form
+RequestDataPage --> WAHRequestAPI : fetch('/api/requests')
+WAHRequestAPI --> RequestHandler : HTTP POST /api/v1/request
+RequestHandler --> MongoDBRepository : repo.InsertTransaction(tx)
+RequestHandler --> iHOMISIncomingAPI : HTTP POST /incoming-requests
+iHOMISIncomingAPI ..> RequestHandler : Returns 200 OK
+RequestHandler ..> WAHRequestAPI : Returns {success:true, status:'PENDING'}
+
+note right of RequestDataPage
+  Form UI. Sets destination_format='FHIR_R4'.
+  Submits to local /api/requests.
+end note
+
+note right of WAHRequestAPI
+  Constructs body with {requesting_org:'WAH', 
+  destination_format:'FHIR_R4'}. POSTs to ADAPT.
+end note
+
+note right of RequestHandler
+  Detects isWAHRequesting=true. 
+  Sets srcFormat='HL7V2', dstFormat='FHIR_R4'.
+  Calls DB to log PENDING.
+  Forwards to iHOMIS /api/incoming-requests.
+end note
+
+note right of MongoDBRepository
+  Inserts document into adapt_transaction_logs 
+  collection with status='PENDING'.
+end note
+
+note right of iHOMISIncomingAPI
+  Receives forwarded data request.
+  Stores in iHOMIS request store.
+  Shows in clinician inbox for approval.
+end note
 
 @enduml

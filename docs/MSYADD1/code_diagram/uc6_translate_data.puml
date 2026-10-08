@@ -1,28 +1,66 @@
 @startuml UC6_Translate_Data
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-
+!theme plain
 title C4 Level 4 — Code Diagram: UC6 Translate Data to/from PH Core HL7 FHIR R4 / HL7 v2
 
-Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
-
-    Component(adapt_ingest_handler, "IngestHandler\ninternal/handlers/ingest.go", "Go HTTP Handler", "Pipeline orchestrator. Calls GetTransformDirection(), then aiService.TransformWithAI().\nOn AI failure: calls mapper.FallbackTransform().\nOn fallback failure: sets QUARANTINED (HTTP 422).")
-
-    Component(get_direction, "GetTransformDirection(srcFmt, dstFmt)\ninternal/services/ai_service.go", "Utility Function", "Maps source+destination formats to a direction constant.\n'HL7V2' + 'FHIR_R4' -> 'HL7V2_TO_FHIR_R4'\n'FHIR_R4' + 'HL7V2' -> 'FHIR_R4_TO_HL7V2'")
-
-    Component(ai_transform, "TransformWithAI(payload, direction)\ninternal/services/ai_service.go", "AI Transformation Service", "Builds a clinical data transformation prompt.\nSends request to Local LLM (Llama 3 via Ollama/vLLM).\nReturns: {Success, Data, Error, UsedModel}")
-
-    Component(fallback_map, "FallbackTransform(payload, direction)\ninternal/services/mapper.go", "Deterministic Fallback Mapper", "Rule-based field-by-field mapping. No AI required.\nHL7V2->FHIR R4: maps PID fields to FHIR Patient Bundle entry.\nFHIR R4->HL7V2: maps Bundle.entry[0].resource to MSH/PID segment structure.\nUsed when Local LLM fails or is unavailable.")
+package "internal.handlers" {
+    class IngestHandler <<struct>> {
+        + aiService: AIService
+        + mapper: Mapper
+        + HandleIngest(w: ResponseWriter, r: Request)
+    }
 }
 
-System_Ext(local_llm, "Local LLM Server (Ollama / vLLM / Llama 3)", "Locally hosted LLM for privacy-compliant clinical transformation. Receives structured prompt with source payload and target format. Returns transformed JSON in destination format.")
+package "internal.services" {
+    class AIService <<struct>> {
+        - localLLMURL: String
+        + GetTransformDirection(srcFmt: String, dstFmt: String): String
+        + TransformWithAI(payload: String, direction: String): TransformResult
+    }
 
-Rel(adapt_ingest_handler, get_direction, "aiService.GetTransformDirection(sourceFormat, destFormat)", "Function Call")
-Rel(get_direction, adapt_ingest_handler, "Returns direction string", "Return")
-Rel(adapt_ingest_handler, ai_transform, "aiService.TransformWithAI(payload, direction)", "Function Call")
-Rel(ai_transform, local_llm, "HTTP POST http://localhost:11434/api/generate\nBody: {model:'llama3', prompt: prompt}", "HTTP / JSON")
-Rel(local_llm, ai_transform, "Returns transformed JSON payload", "HTTP 200 Response")
-Rel(ai_transform, adapt_ingest_handler, "Returns TransformResult struct", "Return")
-Rel(adapt_ingest_handler, fallback_map, "if !transformResult.Success:\nmapper.FallbackTransform(payload, direction)", "Function Call\n(Last Resort)")
-Rel(fallback_map, adapt_ingest_handler, "Returns deterministically mapped payload map[string]interface{}", "Return")
+    class Mapper <<struct>> {
+        + FallbackTransform(payload: String, direction: String): map[string]interface{}
+    }
+    
+    class TransformResult <<struct>> {
+        + Success: bool
+        + Data: String
+        + Error: error
+        + UsedModel: String
+    }
+}
+
+class "Local LLM Server" as LocalLLMServer << (E, #FF7700) External System >> {
+    + POST /api/generate(model: string, prompt: string)
+}
+
+IngestHandler --> AIService : calls
+IngestHandler --> Mapper : calls (fallback)
+AIService ..> TransformResult : produces
+AIService --> LocalLLMServer : HTTP POST request
+
+note top of IngestHandler
+  <b>Pipeline orchestrator</b>
+  1. Calls GetTransformDirection()
+  2. Calls TransformWithAI()
+  3. On AI failure: calls mapper.FallbackTransform()
+  4. On fallback failure: sets QUARANTINED (HTTP 422)
+end note
+
+note bottom of AIService
+  <b>GetTransformDirection</b>
+  Maps source+destination formats to a direction constant.
+  'HL7V2' + 'FHIR_R4' -> 'HL7V2_TO_FHIR_R4'
+  
+  <b>TransformWithAI</b>
+  Builds a clinical data transformation prompt.
+  Sends request to Local LLM (Llama 3 via Ollama/vLLM).
+end note
+
+note bottom of Mapper
+  <b>FallbackTransform</b>
+  Rule-based field-by-field mapping. No AI required.
+  HL7V2->FHIR R4: maps PID fields to FHIR Patient Bundle entry.
+  FHIR R4->HL7V2: maps Bundle.entry[0].resource to MSH/PID.
+end note
 
 @enduml

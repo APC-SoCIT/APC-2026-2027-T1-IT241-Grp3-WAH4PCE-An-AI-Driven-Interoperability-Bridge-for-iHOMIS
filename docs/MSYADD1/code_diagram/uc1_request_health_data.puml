@@ -1,30 +1,68 @@
 @startuml UC1_Request_Health_Data
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-
+!theme plain
 title C4 Level 4 — Code Diagram: UC1 Request Health Data (Example: HL7)
 
-Person(clinician, "Clinician / Staff", "Initiates a health data request from iHOMIS portal.")
-
-Container_Boundary(ihomis, "iHOMIS Portal (React/Next.js)") {
-    Component(request_page, "RequestPage\n/app/(portal)/request/page.tsx", "React Component", "Form UI. Collects PhilHealth No., patient name, reason. On submit calls handleSubmit() which POSTs to local /api/request.")
-    Component(ihomis_request_api, "POST /api/request\n/app/api/request/route.ts", "Next.js Route Handler", "Validates form payload. Forwards to ADAPT iPaaS POST /api/v1/request. Returns {request_id, transaction_id}.")
+package "iHOMIS Portal (React/Next.js)" {
+    class RequestPage {
+        + handleSubmit()
+    }
+    class "POST /api/request" as iHOMISRequestAPI <<Route Handler>> {
+        + POST(req: Request)
+    }
 }
 
-Container_Boundary(adapt, "ADAPT iPaaS Middleware (Golang)") {
-    Component(adapt_request_handler, "RequestHandler\ninternal/handlers/request.go", "Go HTTP Handler", "Determines direction (iHOMIS->WAH). Calls DB to insert PENDING transaction. Forwards request to WAH /api/requests.")
-    Component(mongo_insert, "InsertTransaction()\ninternal/db/mongodb.go", "MongoDB Repository", "Inserts new document into adapt_transaction_logs collection with status='PENDING', source_format='HL7V2', destination_format='FHIR_R4'.")
+package "ADAPT iPaaS Middleware (Golang)" {
+    class RequestHandler <<struct>> {
+        + mongoRepo: MongoDBRepository
+        + HandleRequest(w: ResponseWriter, r: Request)
+    }
+    class MongoDBRepository <<struct>> {
+        + InsertTransaction(tx: Transaction): ObjectID
+    }
 }
 
-Container_Boundary(wah, "WAH Hospital (React/Next.js)") {
-    Component(wah_requests_api, "POST /api/requests\n/app/api/requests/route.ts", "Next.js Route Handler", "Receives forwarded request from ADAPT. Stores request_id in local WAH request store. Notifies WAH inbox for review.")
+package "WAH Hospital (React/Next.js)" {
+    class "POST /api/requests" as WAHRequestsAPI <<Route Handler>> {
+        + POST(req: Request)
+    }
 }
 
-Rel(clinician, request_page, "Fills and submits request form", "Browser")
-Rel(request_page, ihomis_request_api, "handleSubmit() calls\nfetch('/api/request', {method:'POST', body:{philhealth_no, patient_name, reason}})", "HTTP POST")
-Rel(ihomis_request_api, adapt_request_handler, "HTTP POST /api/v1/request\nbody: {requesting_org:'iHOMIS', philhealth_no, patient_name}", "HTTP POST / JSON")
-Rel(adapt_request_handler, mongo_insert, "repo.InsertTransaction(tx)", "Function Call")
-Rel(mongo_insert, adapt_request_handler, "Returns ObjectID", "Return")
-Rel(adapt_request_handler, wah_requests_api, "HTTP POST WAH_API_URL + '/requests'\nbody: {request_id, requesting_org, ipaas_transaction_id}", "HTTP POST / JSON")
-Rel(adapt_request_handler, ihomis_request_api, "Returns HTTP 200\n{success:true, transaction_id, status:'PENDING'}", "HTTP 200 JSON")
+class "Clinician / Staff" as Clinician <<Actor>>
+
+Clinician --> RequestPage : Fills and submits form
+RequestPage --> iHOMISRequestAPI : fetch('/api/request')
+iHOMISRequestAPI --> RequestHandler : HTTP POST /api/v1/request
+RequestHandler --> MongoDBRepository : repo.InsertTransaction(tx)
+RequestHandler --> WAHRequestsAPI : HTTP POST /requests
+WAHRequestsAPI ..> RequestHandler : Returns 200 OK
+RequestHandler ..> iHOMISRequestAPI : Returns {success:true, status:'PENDING'}
+
+note right of RequestPage
+  Form UI. Collects PhilHealth No., 
+  patient name, reason.
+end note
+
+note right of iHOMISRequestAPI
+  Validates form payload.
+  Forwards to ADAPT iPaaS.
+end note
+
+note right of RequestHandler
+  Determines direction (iHOMIS->WAH).
+  Calls DB to insert PENDING transaction.
+  Forwards request to WAH /api/requests.
+end note
+
+note right of MongoDBRepository
+  Inserts new document into adapt_transaction_logs
+  collection with status='PENDING', 
+  source_format='HL7V2', destination_format='FHIR_R4'.
+end note
+
+note right of WAHRequestsAPI
+  Receives forwarded request from ADAPT.
+  Stores request_id in local WAH store.
+  Notifies WAH inbox for review.
+end note
 
 @enduml

@@ -13,11 +13,11 @@ package "src/lib/ai.ts" {
     }
 }
 
-package "Local LLM Engine" {
-    class LLMClient <<Engine>>
+package "Local Gemma 4 LLM Engine" {
+    class "Gemma 4 LLM Client" as Gemma4Client <<Engine>>
 }
 
 AIService --> PromptBuilder : constructs prompt
-AIService --> LLMClient : submits for semantic inference
+AIService --> Gemma4Client : submits for Gemma 4 semantic inference
 
 @enduml

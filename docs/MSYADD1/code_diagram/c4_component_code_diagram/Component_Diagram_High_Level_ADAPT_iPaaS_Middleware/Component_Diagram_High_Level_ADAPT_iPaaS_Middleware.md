@@ -11,7 +11,7 @@
 | 🛡️ **Deterministic Fallback** | [`src/lib/mapping-calc.ts`](./src/lib/mapping-calc.ts) | Service providing rule-based transformations. |
 | ✅ **Validation Service** | [`src/lib/validator.ts`](./src/lib/validator.ts) | Service for structural integrity checks. |
 | 📋 **Transaction Log Service** | [`src/app/api/transactions/route.ts`](./src/app/api/transactions/route.ts) | API service returning sanitized transaction histories. |
-| 🧠 **Local LLM Engine** | [`src/lib/ai.ts`](./src/lib/ai.ts) | AI Inference Engine. |
+| 🧠 **Local Gemma 4 LLM Engine** | [`src/lib/ai.ts`](./src/lib/ai.ts) | Local Gemma 4 inference engine. |
 | 💾 **Staging & Audit Database** | [`src/lib/supabase.ts`](./src/lib/supabase.ts) | The persistence layer. |
 
 ### `<<component>> Admin Dashboard [Next.js UI]`
@@ -1036,7 +1036,7 @@ graph TD
     D[Ingest API] -->|Processes via| E[AI Transformation Service]
     F[Decline API] -->|Logs to| C
     G[Request API] -->|Logs to| C
-    E <-->|Prompts| H[Local LLM Engine]
+    E <-->|Prompts| H[Local Gemma 4 LLM Engine]
     E -->|On Failure| I[Deterministic Syntactic Fallback]
     D -->|Validates via| J[Validation Service]
     B --> K[(Staging & Audit Database)]
@@ -1822,7 +1822,7 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-### `<<component>> Local LLM Engine [Inference Runtime]`
+### `<<component>> Local Gemma 4 LLM Engine [Inference Runtime]`
 **Same as Section 1:** [`lib/ai.ts`](file:///d:/Documents_FromC/WAH4PCE-Merge%20Conflict/apps/adapt-ipaas/src/lib/ai.ts)
 
 ```typescript

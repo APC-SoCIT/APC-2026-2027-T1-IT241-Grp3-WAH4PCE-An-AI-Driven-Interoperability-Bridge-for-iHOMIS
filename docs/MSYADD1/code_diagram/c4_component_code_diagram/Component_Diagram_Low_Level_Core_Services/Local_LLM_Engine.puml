@@ -1,26 +1,25 @@
 @startuml Local_LLM_Engine
 !theme plain
-title C4 Level 4 — Code Diagram: Local LLM Engine
+title C4 Level 4 — Code Diagram: Local Gemma 4 LLM Engine
 
 package "AI Translation Service (src/lib/ai.ts)" {
     class "transformWithAI(payload, direction)" as TransformWithAI <<Async Function>> {
         + execute(): TransformResult
     }
+
+    class "getPromptForDirection(direction)" as GetPrompt <<Function>> {
+        + execute(): String
+    }
 }
 
-package "Model SDK Clients" {
-    class "GoogleGenerativeAI Client" as GeminiClient <<SDK>> {
+package "Local Model SDK Client" {
+    class "Gemma 4 Client" as Gemma4Client <<SDK>> {
         + generateContent(prompt: String): JSON
     }
-
-    class "Groq Client" as GroqClient <<SDK>> {
-        + chat.completions.create(prompt: String): JSON
-    }
 }
 
-TransformWithAI --> GeminiClient : try Gemini Model (1st Priority)
-GeminiClient ..> TransformWithAI : returns JSON / hits quota
-TransformWithAI --> GroqClient : try Groq Model (Fallback)
-GroqClient ..> TransformWithAI : returns JSON
+TransformWithAI --> GetPrompt : retrieves system prompt
+TransformWithAI --> Gemma4Client : submits prompt to local Gemma 4
+Gemma4Client ..> TransformWithAI : returns generated JSON
 
 @enduml

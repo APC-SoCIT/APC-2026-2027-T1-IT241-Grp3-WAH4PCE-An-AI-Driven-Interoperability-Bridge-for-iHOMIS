@@ -4,7 +4,7 @@ title C4 Level 4 — Code Diagram: Execute AI-First Semantic Translation
 
 package "internal.services" {
     class AIService <<struct>> {
-        - localLLMURL: String
+        - gemma4LLMURL: String
         - buildPrompt(payload: String, direction: String): String
         + TransformWithAI(payload: String, direction: String): TransformResult
     }
@@ -16,12 +16,12 @@ package "internal.services" {
     }
 }
 
-class "Local LLM Server" as LocalLLMServer << (E, #FF7700) External System >> {
-    + POST /api/generate(model: string, prompt: string)
+class "Local Gemma 4 LLM Server" as Gemma4LLMServer << (E, #FF7700) External System >> {
+    + POST /api/generate(model: "gemma-4", prompt: string)
 }
 
-AIService --> LocalLLMServer : sends formatted prompt
-LocalLLMServer ..> AIService : returns generated JSON
+AIService --> Gemma4LLMServer : sends formatted prompt
+Gemma4LLMServer ..> AIService : returns generated JSON
 AIService ..> TransformResult : parses output
 
 @enduml

@@ -10,7 +10,7 @@
 | 🤖 **Semantic AI Translator** | [`src/lib/ai.ts`](./src/lib/ai.ts) | `transformWithAI()` execution chain. |
 | 📝 **Sanitized Transaction Logger** | [`src/app/api/ingest/route.ts`](./src/app/api/ingest/route.ts) | Final stage Supabase write operations. |
 | 🚫 **Quarantine Queue Manager** | [`src/app/api/decline/route.ts`](./src/app/api/decline/route.ts) | Logic routing failed payloads to QUARANTINED state. |
-| 🧠 **Local LLM Engine** | [`src/lib/ai.ts`](./src/lib/ai.ts) | LLM provider initialization. |
+| 🧠 **Local Gemma 4 LLM Engine** | [`src/lib/ai.ts`](./src/lib/ai.ts) | Local Gemma 4 provider initialization. |
 | 💾 **MongoDB Database** | [`src/lib/supabase.ts`](./src/lib/supabase.ts) | Supabase/Postgres equivalent. |
 
 ### `<<package>> API Layer [Package]`
@@ -1371,7 +1371,7 @@ graph TD
     A[API Layer] -->|Routes to| B[Provide Health Data Orchestrator]
     B -->|Validates| C[Privacy Consent Gatekeeper]
     B -->|Translates| D[Semantic AI Translator]
-    D <-->|Inference| E[Local LLM Engine]
+    D <-->|Inference| E[Local Gemma 4 LLM Engine]
     B -->|Fallback| F[Deterministic Syntactic Fallback]
     B -->|Checks Schema| G[Validate Schema & Completeness]
     B -->|Logs| H[Sanitized Transaction Logger]
@@ -1541,7 +1541,7 @@ export async function POST(request: NextRequest) {
 
 Also triggered inline in [`api/ingest/route.ts`](file:///d:/Documents_FromC/WAH4PCE-Merge%20Conflict/apps/adapt-ipaas/src/app/api/ingest/route.ts) at Lines 140–157 and 162–181 when transformation or validation fails.
 
-### `<<component>> Local LLM Engine [Inference Runtime]`
+### `<<component>> Local Gemma 4 LLM Engine [Inference Runtime]`
 **Same as Section 1:** [`lib/ai.ts`](file:///d:/Documents_FromC/WAH4PCE-Merge%20Conflict/apps/adapt-ipaas/src/lib/ai.ts)
 
 ```typescript

@@ -12,7 +12,7 @@ package "internal.handlers" {
 
 package "internal.services" {
     class AIService <<struct>> {
-        - localLLMURL: String
+        - gemma4LLMURL: String
         + GetTransformDirection(srcFmt: String, dstFmt: String): String
         + TransformWithAI(payload: String, direction: String): TransformResult
     }
@@ -29,13 +29,13 @@ package "internal.services" {
     }
 }
 
-class "Local LLM Server" as LocalLLMServer << (E, #FF7700) External System >> {
-    + POST /api/generate(model: string, prompt: string)
+class "Local Gemma 4 LLM Server" as Gemma4LLMServer << (E, #FF7700) External System >> {
+    + POST /api/generate(model: "gemma-4", prompt: string)
 }
 
 IngestHandler --> AIService : requests translation
 IngestHandler --> Mapper : triggers fallback
 AIService ..> TransformResult : produces
-AIService --> LocalLLMServer : queries LLM
+AIService --> Gemma4LLMServer : queries local Gemma 4
 
 @enduml

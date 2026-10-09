@@ -1,6 +1,6 @@
 @startuml UC6_Translate_Data
 !theme plain
-title C4 Level 4 — Code Diagram: UC6 Translate Data to/from PH Core HL7 FHIR R4 / HL7 v2
+title C4 Level 4 — Code Diagram: UC6 Translate Data
 
 package "internal.handlers" {
     class IngestHandler <<struct>> {
@@ -33,34 +33,9 @@ class "Local LLM Server" as LocalLLMServer << (E, #FF7700) External System >> {
     + POST /api/generate(model: string, prompt: string)
 }
 
-IngestHandler --> AIService : calls
-IngestHandler --> Mapper : calls (fallback)
+IngestHandler --> AIService : requests translation
+IngestHandler --> Mapper : triggers fallback
 AIService ..> TransformResult : produces
-AIService --> LocalLLMServer : HTTP POST request
-
-note top of IngestHandler
-  <b>Pipeline orchestrator</b>
-  1. Calls GetTransformDirection()
-  2. Calls TransformWithAI()
-  3. On AI failure: calls mapper.FallbackTransform()
-  4. On fallback failure: sets QUARANTINED (HTTP 422)
-end note
-
-note bottom of AIService
-  <b>GetTransformDirection</b>
-  Maps source+destination formats to a direction constant.
-  'HL7V2' + 'FHIR_R4' -> 'HL7V2_TO_FHIR_R4'
-  
-  <b>TransformWithAI</b>
-  Builds a clinical data transformation prompt.
-  Sends request to Local LLM (Llama 3 via Ollama/vLLM).
-end note
-
-note bottom of Mapper
-  <b>FallbackTransform</b>
-  Rule-based field-by-field mapping. No AI required.
-  HL7V2->FHIR R4: maps PID fields to FHIR Patient Bundle entry.
-  FHIR R4->HL7V2: maps Bundle.entry[0].resource to MSH/PID.
-end note
+AIService --> LocalLLMServer : queries LLM
 
 @enduml

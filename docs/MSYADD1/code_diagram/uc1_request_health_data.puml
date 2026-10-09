@@ -1,6 +1,6 @@
 @startuml UC1_Request_Health_Data
 !theme plain
-title C4 Level 4 — Code Diagram: UC1 Request Health Data (Example: HL7)
+title C4 Level 4 — Code Diagram: UC1 Request Health Data
 
 package "iHOMIS Portal (React/Next.js)" {
     class RequestPage {
@@ -29,40 +29,12 @@ package "WAH Hospital (React/Next.js)" {
 
 class "Clinician / Staff" as Clinician <<Actor>>
 
-Clinician --> RequestPage : Fills and submits form
-RequestPage --> iHOMISRequestAPI : fetch('/api/request')
-iHOMISRequestAPI --> RequestHandler : HTTP POST /api/v1/request
-RequestHandler --> MongoDBRepository : repo.InsertTransaction(tx)
-RequestHandler --> WAHRequestsAPI : HTTP POST /requests
-WAHRequestsAPI ..> RequestHandler : Returns 200 OK
-RequestHandler ..> iHOMISRequestAPI : Returns {success:true, status:'PENDING'}
-
-note right of RequestPage
-  Form UI. Collects PhilHealth No., 
-  patient name, reason.
-end note
-
-note right of iHOMISRequestAPI
-  Validates form payload.
-  Forwards to ADAPT iPaaS.
-end note
-
-note right of RequestHandler
-  Determines direction (iHOMIS->WAH).
-  Calls DB to insert PENDING transaction.
-  Forwards request to WAH /api/requests.
-end note
-
-note right of MongoDBRepository
-  Inserts new document into adapt_transaction_logs
-  collection with status='PENDING', 
-  source_format='HL7V2', destination_format='FHIR_R4'.
-end note
-
-note right of WAHRequestsAPI
-  Receives forwarded request from ADAPT.
-  Stores request_id in local WAH store.
-  Notifies WAH inbox for review.
-end note
+Clinician --> RequestPage : fills form
+RequestPage --> iHOMISRequestAPI : submits
+iHOMISRequestAPI --> RequestHandler : forwards request
+RequestHandler --> MongoDBRepository : saves PENDING state
+RequestHandler --> WAHRequestsAPI : forwards to WAH
+WAHRequestsAPI ..> RequestHandler : returns 200 OK
+RequestHandler ..> iHOMISRequestAPI : returns status
 
 @enduml

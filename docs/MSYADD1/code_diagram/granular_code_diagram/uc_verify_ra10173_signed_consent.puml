@@ -1,0 +1,23 @@
+@startuml UC_Verify_RA10173_Signed_Consent
+!theme plain
+title C4 Level 4 — Code Diagram: Verify RA 10173 Signed Consent Flag & Validity
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class IngestHandler <<struct>> {
+        + CheckConsentFlag(payload: RequestPayload): bool
+    }
+    
+    class RequestPayload <<struct>> {
+        + consent_signed: bool
+        + patient_data: map[string]interface{}
+    }
+}
+
+class "Patient Record" as PatientRecord <<Entity>> {
+    + consent_status: String
+}
+
+IngestHandler --> RequestPayload : extracts consent flag
+IngestHandler --> PatientRecord : validates consent validity
+
+@enduml

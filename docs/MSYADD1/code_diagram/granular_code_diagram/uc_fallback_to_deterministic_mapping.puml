@@ -1,0 +1,27 @@
+@startuml UC_Fallback_To_Deterministic_Mapping
+!theme plain
+title C4 Level 4 — Code Diagram: Fallback to Deterministic Mapping
+
+package "internal.handlers" {
+    class IngestHandler <<struct>> {
+        + aiService: AIService
+        + mapper: Mapper
+    }
+}
+
+package "internal.services" {
+    class AIService <<struct>> {
+        + TransformWithAI(payload: String, direction: String): TransformResult
+    }
+
+    class Mapper <<struct>> {
+        + FallbackTransform(payload: String, direction: String): map[string]interface{}
+    }
+}
+
+IngestHandler --> AIService : requests translation
+AIService ..> IngestHandler : returns AI failure (429/timeout)
+IngestHandler --> Mapper : executes fallback mapping
+Mapper ..> IngestHandler : returns mapped payload
+
+@enduml

@@ -45,44 +45,23 @@ package "ADAPT iPaaS Middleware (Golang)" {
 
 class "MongoDB" as MongoDB <<Database>>
 
-Admin --> LoginPage : Enters username and password
-LoginPage --> AuthHandler : POST /api/auth/login
-AuthHandler --> MongoRepository : VerifyCredentials()
-MongoRepository --> MongoDB : findOne()
-AuthHandler ..> Admin : Sets JWT session cookie
+Admin --> LoginPage : authenticates
+LoginPage --> AuthHandler : submits credentials
+AuthHandler --> MongoRepository : verifies user
+MongoRepository --> MongoDB : queries
 
-Admin --> Middleware : Accesses protected routes
-Middleware --> LoginPage : Redirects if unauthenticated
+Admin --> Middleware : navigates
+Middleware --> LoginPage : redirects unauthenticated
 
-Admin --> DashboardPage : Views live KPI metrics
-DashboardPage --> MetricsHandler : GET /api/v1/metrics
-MetricsHandler --> MongoRepository : GetMetricsAggregation()
-MongoRepository --> MongoDB : aggregate()
+Admin --> DashboardPage : monitors
+DashboardPage --> MetricsHandler : fetches metrics
+MetricsHandler --> MongoRepository : aggregates data
 
-Admin --> TransactionLogsPage : Views audit log
-TransactionLogsPage --> TransactionsHandler : GET /api/v1/transactions
-TransactionsHandler --> MongoRepository : GetTransactions(filters)
-MongoRepository --> MongoDB : find()
+Admin --> TransactionLogsPage : audits
+TransactionLogsPage --> TransactionsHandler : fetches logs
+TransactionsHandler --> MongoRepository : queries logs
 
-Admin --> DataMapperPage : Inspects raw vs transformed payload
-DataMapperPage --> TransactionsHandler : GET /api/v1/transactions/:id
-
-note right of AuthHandler
-  Validates admin credentials.
-  Generates and returns JWT token 
-  as HTTP-only cookie.
-end note
-
-note right of MetricsHandler
-  Aggregates adapt_transaction_logs:
-  - total_records, success_rate, 
-    pending_count, quarantined_count
-end note
-
-note right of DataMapperPage
-  Side-by-side payload inspector.
-  SHA-256 hashed by default 
-  for PHI protection.
-end note
+Admin --> DataMapperPage : inspects
+DataMapperPage --> TransactionsHandler : fetches detail
 
 @enduml

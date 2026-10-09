@@ -1,0 +1,24 @@
+@startuml UC_Quarantine_Incomplete_Record
+!theme plain
+title C4 Level 4 — Code Diagram: Quarantine Incomplete Record
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class IngestHandler <<struct>> {
+        + mongoRepo: MongoDBRepository
+        + handleValidationError(err: Error)
+    }
+
+    class ValidationModule <<struct>> {
+        + ValidateTransformation(data: String, direction: String): ValidationResult
+    }
+
+    class MongoDBRepository <<struct>> {
+        + UpdateStatusQuarantined(txID: String, errMessage: String)
+    }
+}
+
+IngestHandler --> ValidationModule : evaluates result
+ValidationModule ..> IngestHandler : returns invalid status
+IngestHandler --> MongoDBRepository : triggers quarantine
+
+@enduml

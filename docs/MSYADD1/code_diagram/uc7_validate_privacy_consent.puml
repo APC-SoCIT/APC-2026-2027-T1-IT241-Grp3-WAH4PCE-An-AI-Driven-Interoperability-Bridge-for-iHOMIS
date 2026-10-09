@@ -2,7 +2,6 @@
 !theme plain
 title C4 Level 4 — Code Diagram: UC7 Validate Privacy Consent
 
-
 class Patient <<Actor>>
 
 package "iHOMIS Portal (React/Next.js)" {
@@ -30,33 +29,13 @@ package "ADAPT iPaaS Middleware (Golang)" {
     }
 }
 
-Patient --> iHOMISConsent : Reads DPA notice and ticks 'I agree'
-Patient --> WAHConsent : Reads DPA notice and ticks 'I agree'
+Patient --> iHOMISConsent : signs consent
+Patient --> WAHConsent : signs consent
 
-iHOMISConsent --> IngestHandler : if consentSigned===true: HTTP POST /api/v1/ingest
-WAHConsent --> IngestHandler : if consentSigned===true: HTTP POST /api/v1/ingest
+iHOMISConsent --> IngestHandler : submits payload
+WAHConsent --> IngestHandler : submits payload
 
-IngestHandler --> MongoDBRepository : if !consent_signed: InsertQuarantinedTransaction()
-IngestHandler ..> Patient : HTTP 422 (if !consent_signed)
-
-note right of iHOMISConsent
-  State: consentSigned (default false).
-  Only proceeds to fetch('/api/ingest') 
-  if consentSigned===true.
-end note
-
-note bottom of IngestHandler
-  Server-side second layer of enforcement.
-  Reads consent_signed from request body.
-  Error message references RA 10173 explicitly.
-end note
-
-note top of IngestHandler
-  This use case is an <<include>> of UC6: Translate Data.
-  Consent is enforced at two layers:
-  1. Frontend UI: blocks form submission if checkbox is not checked.
-  2. Backend API: ADAPT iPaaS rejects and quarantines if consent_signed !== true.
-  Legal basis: Republic Act 10173 — Data Privacy Act of 2012.
-end note
+IngestHandler --> MongoDBRepository : quarantines unconsented payload
+IngestHandler ..> Patient : returns 422 (if denied)
 
 @enduml

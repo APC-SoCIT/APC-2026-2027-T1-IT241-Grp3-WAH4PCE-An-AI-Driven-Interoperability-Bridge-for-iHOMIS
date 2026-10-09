@@ -37,31 +37,13 @@ package "WAH Hospital (React/Next.js)" {
 
 class "Clinician / Staff" as Clinician <<Actor>>
 
-Clinician --> SavePage : Fills record and ticks consent
-SavePage --> iHOMISIngestProxy : fetch('/api/ingest')
-iHOMISIngestProxy --> IngestHandler : HTTP POST /api/v1/ingest
-IngestHandler --> MongoDBRepository : repo.UpdateStatus(txID, 'TRANSFORMING')
-IngestHandler --> AIService : aiService.TransformWithAI()
-IngestHandler --> ValidationService : validator.ValidateTransformation()
-IngestHandler --> MongoDBRepository : repo.UpdateStatus(txID, 'SUCCESS')
-IngestHandler --> WAHWebhook : HTTP POST (FHIRBundle)
-IngestHandler ..> iHOMISIngestProxy : Returns {success:true, status:'SUCCESS'}
-
-note right of SavePage
-  Multi-step form.
-  Checks consentSigned===true before proceeding.
-end note
-
-note right of iHOMISIngestProxy
-  Receives form data. Packages as HL7V2 payload.
-  Forwards to ADAPT iPaaS.
-end note
-
-note bottom of IngestHandler
-  Main ingestion pipeline.
-  Validates fields & consent. Updates to TRANSFORMING.
-  Calls AI. Validates output.
-  Forwards to WAH.
-end note
+Clinician --> SavePage : provides data
+SavePage --> iHOMISIngestProxy : submits
+iHOMISIngestProxy --> IngestHandler : forwards payload
+IngestHandler --> MongoDBRepository : updates status
+IngestHandler --> AIService : requests translation
+IngestHandler --> ValidationService : requests validation
+IngestHandler --> WAHWebhook : pushes webhook
+IngestHandler ..> iHOMISIngestProxy : returns status
 
 @enduml

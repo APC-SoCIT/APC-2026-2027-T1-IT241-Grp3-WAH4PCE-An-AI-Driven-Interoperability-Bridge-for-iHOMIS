@@ -1,0 +1,29 @@
+@startuml UC_Log_Sanitized_Audit_Trail
+!theme plain
+title C4 Level 4 — Code Diagram: Log Sanitized Audit Trail (Zero-PHI Compliance)
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class AuditLogger <<struct>> {
+        + mongoRepo: MongoDBRepository
+        + sanitizePayload(payload: String): String
+        + LogTransaction(tx: Transaction)
+    }
+
+    class MongoDBRepository <<struct>> {
+        + InsertAuditLog(log: AuditLog)
+    }
+    
+    class AuditLog <<struct>> {
+        + transaction_id: String
+        + hashed_payload: String
+        + status: String
+    }
+}
+
+class "MongoDB" as MongoDB <<Database>>
+
+AuditLogger --> AuditLogger : hashes/removes PHI
+AuditLogger --> MongoDBRepository : saves sanitized record
+MongoDBRepository --> MongoDB : inserts document
+
+@enduml

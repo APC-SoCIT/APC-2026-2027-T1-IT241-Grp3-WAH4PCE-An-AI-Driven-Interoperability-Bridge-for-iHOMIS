@@ -1,0 +1,24 @@
+@startuml Transaction_Log_Service
+!theme plain
+title C4 Level 4 - Code Diagram: Transaction Log Service
+
+package "src/app/api/transactions" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + GET(req: Request): Response
+    }
+    
+    class TransactionController <<Class>> {
+        + fetchHistory(filters: Map): List<Transaction>
+        + fetchSanitizedLog(id: String): Transaction
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> TransactionController : delegates
+TransactionController --> SupabaseClient : fetches logs
+TransactionController --> TransactionController : sanitizes PHI data
+
+@enduml

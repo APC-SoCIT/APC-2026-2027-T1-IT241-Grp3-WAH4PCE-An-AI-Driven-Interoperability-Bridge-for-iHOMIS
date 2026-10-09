@@ -1,0 +1,20 @@
+@startuml Transaction_Log_Viewer
+!theme plain
+title C4 Level 4 - Code Diagram: Transaction Log Viewer
+
+package "src/app/transactions" {
+    class "page.tsx" as TransactionPage <<React Component>> {
+        + logs: Transaction[]
+        + filter: String
+        + fetchLogs()
+        + render()
+    }
+    
+    class TableView <<Helper Component>> {
+        + renderRow()
+    }
+}
+
+TransactionPage --> TableView : passes data
+
+@enduml

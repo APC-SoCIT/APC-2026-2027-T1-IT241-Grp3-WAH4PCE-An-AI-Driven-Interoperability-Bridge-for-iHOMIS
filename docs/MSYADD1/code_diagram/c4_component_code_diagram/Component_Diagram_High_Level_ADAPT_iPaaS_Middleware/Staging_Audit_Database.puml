@@ -1,0 +1,24 @@
+@startuml Staging_Audit_Database
+!theme plain
+title C4 Level 4 - Code Diagram: Staging & Audit Database
+
+package "src/lib/supabase.ts" {
+    class SupabaseClient <<Service>> {
+        + initClient(): Client
+        + insertLog(table: String, data: JSON): Result
+        + queryLogs(table: String, filters: Map): List<JSON>
+    }
+}
+
+package "PostgreSQL (Supabase)" {
+    class adapt_transaction_logs <<Table>> {
+        + id: UUID
+        + payload: JSONB
+        + status: String
+        + created_at: Timestamp
+    }
+}
+
+SupabaseClient --> adapt_transaction_logs : CRUD operations
+
+@enduml

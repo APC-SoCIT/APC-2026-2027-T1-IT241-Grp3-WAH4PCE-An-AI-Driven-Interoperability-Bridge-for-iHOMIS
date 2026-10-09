@@ -1,0 +1,19 @@
+@startuml Sanitized_Transaction_Logger
+!theme plain
+title C4 Level 4 - Code Diagram: Sanitized Transaction Logger
+
+package "src/app/api/ingest/route.ts" {
+    class TransactionLogger <<Logic>> {
+        + hashPHI(payload: JSON): JSON
+        + logFinalState(txID: String, status: String)
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+}
+
+TransactionLogger --> TransactionLogger : removes/hashes PII
+TransactionLogger --> SupabaseClient : executes final write
+
+@enduml

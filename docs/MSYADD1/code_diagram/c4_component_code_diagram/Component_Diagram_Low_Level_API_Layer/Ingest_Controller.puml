@@ -1,0 +1,26 @@
+@startuml Ingest_Controller
+!theme plain
+title C4 Level 4 - Code Diagram: Ingest Controller
+
+package "src/app/api/ingest" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class IngestController <<Class>> {
+        + handleIngestion(payload: JSON): Result
+    }
+}
+
+package "src/lib" {
+    class ValidationService <<Service>>
+    class AIService <<Service>>
+    class WebhookDispatcher <<Client>>
+}
+
+RouteHandler --> IngestController : parses body
+IngestController --> ValidationService : executes structural check
+IngestController --> AIService : executes AI translation
+IngestController --> WebhookDispatcher : forwards transformed payload
+
+@enduml

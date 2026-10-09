@@ -1,0 +1,20 @@
+@startuml App_Router_Layout
+!theme plain
+title C4 Level 4 - Code Diagram: App Router & Layout
+
+package "src/app" {
+    class "layout.tsx" as Layout <<React Server Component>> {
+        + render(children: ReactNode)
+    }
+    
+    class "globals.css" as Globals <<Stylesheet>>
+}
+
+class NextRouter <<Core>> {
+    + renderPage()
+}
+
+NextRouter --> Layout : wraps all pages
+Layout --> Globals : imports styles
+
+@enduml

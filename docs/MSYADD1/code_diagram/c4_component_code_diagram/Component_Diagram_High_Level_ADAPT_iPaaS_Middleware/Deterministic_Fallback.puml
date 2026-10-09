@@ -1,0 +1,19 @@
+@startuml Deterministic_Fallback
+!theme plain
+title C4 Level 4 - Code Diagram: Deterministic Fallback
+
+package "src/lib/mapping-calc.ts" {
+    class MappingCalculator <<Service>> {
+        + applyFallbackRules(payload: JSON, targetFormat: String): JSON
+        - mapHL7toFHIR(payload: JSON): JSON
+        - mapFHIRtoHL7(payload: JSON): JSON
+    }
+    
+    class RulesEngine <<Helper>> {
+        + evaluate(field: String): String
+    }
+}
+
+MappingCalculator --> RulesEngine : processes fields
+
+@enduml

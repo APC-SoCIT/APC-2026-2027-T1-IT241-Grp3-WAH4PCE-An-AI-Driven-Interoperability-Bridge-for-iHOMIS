@@ -1,0 +1,23 @@
+@startuml AI_Transformation_Service
+!theme plain
+title C4 Level 4 - Code Diagram: AI Transformation Service
+
+package "src/lib/ai.ts" {
+    class AIService <<Service>> {
+        + generatePrompt(schema: String): String
+        + translateFormat(data: JSON, target: String): JSON
+    }
+    
+    class PromptBuilder <<Helper>> {
+        + build(context: Map): String
+    }
+}
+
+package "Local LLM Engine" {
+    class LLMClient <<Engine>>
+}
+
+AIService --> PromptBuilder : constructs prompt
+AIService --> LLMClient : submits for inference
+
+@enduml

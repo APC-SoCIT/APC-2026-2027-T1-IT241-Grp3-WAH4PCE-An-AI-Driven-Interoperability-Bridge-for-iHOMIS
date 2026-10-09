@@ -1,0 +1,20 @@
+@startuml ADAPT_API_Client
+!theme plain
+title C4 Level 4 - Code Diagram: ADAPT API Client
+
+package "src/components" {
+    class Sidebar <<React Component>> {
+        + render()
+        + navigate()
+    }
+}
+
+package "src/lib/api" {
+    class APIClient <<Utility>> {
+        + safeFetch(url: String, options: Map): Promise<JSON>
+    }
+}
+
+Sidebar --> APIClient : uses for data
+
+@enduml

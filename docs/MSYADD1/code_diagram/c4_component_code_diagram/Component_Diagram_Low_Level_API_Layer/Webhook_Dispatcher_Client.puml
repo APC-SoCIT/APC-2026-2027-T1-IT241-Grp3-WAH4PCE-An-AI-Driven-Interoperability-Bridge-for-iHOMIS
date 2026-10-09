@@ -1,0 +1,21 @@
+@startuml Webhook_Dispatcher_Client
+!theme plain
+title C4 Level 4 - Code Diagram: Webhook Dispatcher Client
+
+package "src/app/api/ingest/route.ts" {
+    class WebhookDispatcher <<Client>> {
+        + dispatchToTarget(payload: JSON, targetURL: String): Promise<Response>
+        - generateSignature(payload: String): String
+    }
+}
+
+package "External Endpoints" {
+    class TargetAPI <<External>> {
+        + POST(payload: JSON)
+    }
+}
+
+WebhookDispatcher --> WebhookDispatcher : generate HMAC signature
+WebhookDispatcher --> TargetAPI : HTTP POST (Gold Payload)
+
+@enduml

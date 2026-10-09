@@ -1,0 +1,35 @@
+@startuml Admin_Dashboard
+!theme plain
+title C4 Level 4 - Code Diagram: Admin Dashboard
+
+package "Admin Dashboard (Next.js) - src/app/page.tsx" {
+    class "page.tsx" as PageComponent <<React Component>> {
+        + render()
+        + useEffect()
+    }
+
+    class "fetchMetrics()" as MetricsFetcher <<Function>> {
+        + fetch(): Promise<Metrics>
+    }
+
+    class "fetchTransactions()" as TransactionsFetcher <<Function>> {
+        + fetch(): Promise<Transaction[]>
+    }
+
+    class MetricsView <<React Component>> {
+        + metrics: Metrics
+        + render()
+    }
+
+    class TransactionTable <<React Component>> {
+        + transactions: Transaction[]
+        + render()
+    }
+}
+
+PageComponent --> MetricsFetcher : calls on mount
+PageComponent --> TransactionsFetcher : calls on mount
+MetricsFetcher --> MetricsView : updates state
+TransactionsFetcher --> TransactionTable : updates state
+
+@enduml

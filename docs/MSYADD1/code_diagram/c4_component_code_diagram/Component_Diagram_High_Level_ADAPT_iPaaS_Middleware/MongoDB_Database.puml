@@ -1,0 +1,31 @@
+@startuml MongoDB_Database
+!theme plain
+title C4 Level 4 — Code Diagram: MongoDB Database
+
+package "Collections" {
+    class "adapt_transaction_logs" as TransactionLogs <<Collection>> {
+        + _id: ObjectID
+        + transaction_id: String
+        + requesting_org: String
+        + source_system: String
+        + destination_system: String
+        + source_format: String
+        + destination_format: String
+        + status: String
+        + raw_payload: String
+        + transformed_payload: String
+        + error_message: String
+        + created_at: Timestamp
+        + updated_at: Timestamp
+    }
+
+    class "users" as Users <<Collection>> {
+        + _id: ObjectID
+        + username: String
+        + password_hash: String
+        + role: String
+        + created_at: Timestamp
+    }
+}
+
+@enduml

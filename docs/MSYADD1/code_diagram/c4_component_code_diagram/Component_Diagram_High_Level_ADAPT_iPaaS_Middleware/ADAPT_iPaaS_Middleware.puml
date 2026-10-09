@@ -1,0 +1,49 @@
+@startuml ADAPT_iPaaS_Middleware
+!theme plain
+title C4 Level 4 — Code Diagram: ADAPT iPaaS Middleware
+
+package "API Handlers" {
+    class IngestHandler {
+        + HandleIngest(req: Request, res: Response)
+    }
+    class RequestHandler {
+        + HandleRequest(req: Request, res: Response)
+    }
+    class MetricsHandler {
+        + GetMetrics(req: Request, res: Response)
+    }
+    class TransactionsHandler {
+        + GetTransactions(req: Request, res: Response)
+    }
+}
+
+package "Core Services" {
+    class ValidationModule {
+        + ValidateTransformation(data: String): ValidationResult
+    }
+    class AIService {
+        + TransformWithAI(payload: String): TransformResult
+    }
+    class Mapper {
+        + FallbackTransform(payload: String): Map
+    }
+}
+
+package "Data Access" {
+    class MongoDBRepository {
+        + InsertTransaction(tx: Transaction)
+        + UpdateStatus(txID: String, status: String)
+        + GetMetricsAggregation(): Metrics
+    }
+}
+
+IngestHandler --> ValidationModule : validates schema
+IngestHandler --> AIService : translates data
+IngestHandler --> Mapper : translates (fallback)
+IngestHandler --> MongoDBRepository : updates tx status
+
+RequestHandler --> MongoDBRepository : inserts pending tx
+MetricsHandler --> MongoDBRepository : aggregates metrics
+TransactionsHandler --> MongoDBRepository : queries logs
+
+@enduml

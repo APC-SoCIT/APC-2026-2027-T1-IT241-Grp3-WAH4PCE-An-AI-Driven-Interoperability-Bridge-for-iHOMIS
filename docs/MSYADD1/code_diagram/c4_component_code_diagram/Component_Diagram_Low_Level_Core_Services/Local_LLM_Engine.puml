@@ -1,0 +1,26 @@
+@startuml Local_LLM_Engine
+!theme plain
+title C4 Level 4 — Code Diagram: Local LLM Engine
+
+package "AI Translation Service (src/lib/ai.ts)" {
+    class "transformWithAI(payload, direction)" as TransformWithAI <<Async Function>> {
+        + execute(): TransformResult
+    }
+}
+
+package "Model SDK Clients" {
+    class "GoogleGenerativeAI Client" as GeminiClient <<SDK>> {
+        + generateContent(prompt: String): JSON
+    }
+
+    class "Groq Client" as GroqClient <<SDK>> {
+        + chat.completions.create(prompt: String): JSON
+    }
+}
+
+TransformWithAI --> GeminiClient : try Gemini Model (1st Priority)
+GeminiClient ..> TransformWithAI : returns JSON / hits quota
+TransformWithAI --> GroqClient : try Groq Model (Fallback)
+GroqClient ..> TransformWithAI : returns JSON
+
+@enduml

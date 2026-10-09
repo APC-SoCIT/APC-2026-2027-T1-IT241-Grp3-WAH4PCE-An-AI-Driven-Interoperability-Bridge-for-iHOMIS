@@ -1,0 +1,23 @@
+@startuml Request_Controller
+!theme plain
+title C4 Level 4 - Code Diagram: Request Controller
+
+package "src/app/api/request" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class RequestController <<Class>> {
+        + queryHealthRecords(params: JSON): Result
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> RequestController : delegates
+RequestController --> SupabaseClient : performs search queries
+RequestController --> SupabaseClient : records audit log
+
+@enduml

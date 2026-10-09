@@ -1,0 +1,23 @@
+@startuml Auth_Scope_Middleware
+!theme plain
+title C4 Level 4 - Code Diagram: Auth & Scope Middleware
+
+package "src/middleware.ts" {
+    class Middleware <<Next.js Middleware>> {
+        + middleware(req: NextRequest): NextResponse
+        - verifyJWT(token: String): JWTResult
+        - checkScope(token: JWTResult, route: String): bool
+    }
+}
+
+package "Next.js Runtime" {
+    class NextRequest <<Object>>
+    class NextResponse <<Object>>
+}
+
+Middleware --> NextRequest : parses headers (Authorization)
+Middleware --> NextResponse : returns 401/403 or next()
+Middleware --> Middleware : verifyJWT
+Middleware --> Middleware : checkScope
+
+@enduml

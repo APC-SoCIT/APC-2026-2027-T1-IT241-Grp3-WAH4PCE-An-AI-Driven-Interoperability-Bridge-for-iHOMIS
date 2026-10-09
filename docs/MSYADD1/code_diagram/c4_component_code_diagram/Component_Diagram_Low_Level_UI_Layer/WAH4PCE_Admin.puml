@@ -1,0 +1,16 @@
+@startuml WAH4PCE_Admin
+!theme plain
+title C4 Level 4 - Code Diagram: WAH4PCE Admin
+
+class "WAH4PCE Admin" as Admin <<Actor>>
+
+package "Session Storage (Browser)" {
+    class JWT_Cookie <<Cookie>> {
+        + token: String
+        + expires: Date
+    }
+}
+
+Admin --> JWT_Cookie : possesses
+
+@enduml

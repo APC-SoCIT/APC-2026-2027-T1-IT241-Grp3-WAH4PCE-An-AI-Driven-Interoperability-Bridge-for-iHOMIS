@@ -1,0 +1,23 @@
+@startuml Request_API
+!theme plain
+title C4 Level 4 - Code Diagram: Request API
+
+package "src/app/api/request" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class RequestController <<Class>> {
+        + negotiateRecord(query: JSON): Result
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> RequestController : delegates
+RequestController --> SupabaseClient : queries staging records
+RequestController --> SupabaseClient : logs access
+
+@enduml

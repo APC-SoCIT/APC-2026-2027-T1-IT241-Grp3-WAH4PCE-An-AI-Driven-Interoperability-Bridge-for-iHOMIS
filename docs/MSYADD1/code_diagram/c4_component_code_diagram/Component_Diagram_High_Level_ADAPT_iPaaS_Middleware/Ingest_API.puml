@@ -1,0 +1,26 @@
+@startuml Ingest_API
+!theme plain
+title C4 Level 4 - Code Diagram: Ingest API
+
+package "src/app/api/ingest" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class IngestController <<Class>> {
+        + processPayload(payload: JSON): Result
+    }
+}
+
+package "src/lib" {
+    class Validator <<Service>>
+    class AIService <<Service>>
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> IngestController : delegates
+IngestController --> Validator : validates payload
+IngestController --> AIService : requests translation
+IngestController --> SupabaseClient : logs transaction
+
+@enduml

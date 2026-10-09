@@ -1,0 +1,17 @@
+@startuml Privacy_Consent_Gatekeeper
+!theme plain
+title C4 Level 4 - Code Diagram: Privacy Consent Gatekeeper
+
+package "src/app/api/ingest/route.ts" {
+    class ConsentGatekeeper <<Middleware Logic>> {
+        + verifyPatientConsent(payload: JSON): bool
+    }
+}
+
+package "Exception Handling" {
+    class "HTTP 422" as Error422 <<Response>>
+}
+
+ConsentGatekeeper --> Error422 : throws if consent_signed is false
+
+@enduml

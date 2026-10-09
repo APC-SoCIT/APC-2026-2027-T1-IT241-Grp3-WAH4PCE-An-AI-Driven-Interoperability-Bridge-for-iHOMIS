@@ -1,0 +1,18 @@
+@startuml HTTP_Router_Dispatcher
+!theme plain
+title C4 Level 4 - Code Diagram: HTTP Router & Dispatcher
+
+package "Next.js App Router" {
+    class "layout.tsx" as Layout <<React Server Component>> {
+        + render(children: ReactNode)
+    }
+    
+    class "Filesystem Routing" as FSRouter <<Next.js Core>> {
+        + mapPathToComponent(path: String)
+    }
+}
+
+FSRouter --> Layout : mounts page component
+Layout --> FSRouter : injects children
+
+@enduml

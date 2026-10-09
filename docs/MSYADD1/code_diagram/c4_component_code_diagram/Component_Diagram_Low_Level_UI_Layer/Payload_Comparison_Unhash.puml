@@ -1,0 +1,22 @@
+@startuml Payload_Comparison_Unhash
+!theme plain
+title C4 Level 4 - Code Diagram: Payload Comparison & Unhash
+
+package "src/app/mapper" {
+    class "page.tsx" as MapperPage <<React Component>> {
+        + rawPayload: String
+        + transformedPayload: String
+        + isHashed: bool
+        + toggleHash()
+        + render()
+    }
+    
+    class CryptoUtils <<Utility>> {
+        + unhash(data: String): String
+        + hash(data: String): String
+    }
+}
+
+MapperPage --> CryptoUtils : calls for SHA-256
+
+@enduml

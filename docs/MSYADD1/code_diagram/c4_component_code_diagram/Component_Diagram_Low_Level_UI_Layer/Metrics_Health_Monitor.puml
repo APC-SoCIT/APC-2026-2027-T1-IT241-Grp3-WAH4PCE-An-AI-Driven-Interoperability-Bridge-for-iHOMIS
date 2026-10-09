@@ -1,0 +1,20 @@
+@startuml Metrics_Health_Monitor
+!theme plain
+title C4 Level 4 - Code Diagram: Metrics & Health Monitor
+
+package "src/components" {
+    class MetricCard <<React Component>> {
+        + title: String
+        + value: String
+        + icon: ReactNode
+        + render()
+    }
+    
+    class DashboardView <<React Component>> {
+        + fetchMetrics()
+    }
+}
+
+DashboardView --> MetricCard : instantiates
+
+@enduml

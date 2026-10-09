@@ -1,0 +1,22 @@
+@startuml Decline_API
+!theme plain
+title C4 Level 4 - Code Diagram: Decline API
+
+package "src/app/api/decline" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class DeclineController <<Class>> {
+        + quarantinePayload(payload: JSON, reason: String)
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> DeclineController : delegates
+DeclineController --> SupabaseClient : inserts QUARANTINED record
+
+@enduml

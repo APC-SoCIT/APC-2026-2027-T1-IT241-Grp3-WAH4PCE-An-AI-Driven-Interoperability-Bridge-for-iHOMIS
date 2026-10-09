@@ -1,0 +1,29 @@
+@startuml Core_Services_Package
+!theme plain
+title C4 Level 4 - Code Diagram: Core Services [Package]
+
+package "src/lib" {
+    class "ai.ts" as AIService <<Service>> {
+        + transformWithAI(data: JSON): JSON
+    }
+    class "mapping-calc.ts" as Mapper <<Service>> {
+        + applyFallbackRules(data: JSON): JSON
+    }
+    class "validator.ts" as Validator <<Service>> {
+        + validateSchema(data: JSON): bool
+    }
+    class "supabase.ts" as DatabaseClient <<Service>> {
+        + query(table: String): Result
+    }
+}
+
+package "Controllers (src/app/api)" {
+    class RouteHandlers <<API>>
+}
+
+RouteHandlers --> Validator : dependency injected
+RouteHandlers --> AIService : dependency injected
+RouteHandlers --> Mapper : dependency injected
+RouteHandlers --> DatabaseClient : dependency injected
+
+@enduml

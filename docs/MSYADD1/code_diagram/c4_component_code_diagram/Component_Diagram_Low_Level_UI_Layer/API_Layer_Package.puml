@@ -1,0 +1,20 @@
+@startuml API_Layer_Package
+!theme plain
+title C4 Level 4 - Code Diagram: API Layer [Package] Target
+
+package "src/app/api" {
+    class APIRoutes <<Backend Endpoints>> {
+        + /api/ingest
+        + /api/decline
+        + /api/request
+        + /api/transactions
+    }
+}
+
+package "Frontend UI" {
+    class UIComponents <<React>>
+}
+
+UIComponents --> APIRoutes : HTTP Fetch
+
+@enduml

@@ -1,0 +1,23 @@
+@startuml Semantic_AI_Translator
+!theme plain
+title C4 Level 4 - Code Diagram: Semantic AI Translator
+
+package "src/lib/ai.ts" {
+    class AIService <<Service>> {
+        + transformWithAI(data: JSON, direction: String): JSON
+        + generatePrompt(schema: String): String
+    }
+    
+    class PromptBuilder <<Helper>> {
+        + build(context: Map): String
+    }
+}
+
+package "Local LLM Engine" {
+    class LLMClient <<Engine>>
+}
+
+AIService --> PromptBuilder : constructs prompt
+AIService --> LLMClient : submits for semantic inference
+
+@enduml

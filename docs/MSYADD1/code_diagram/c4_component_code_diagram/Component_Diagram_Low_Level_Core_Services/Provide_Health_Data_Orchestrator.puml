@@ -1,0 +1,26 @@
+@startuml Provide_Health_Data_Orchestrator
+!theme plain
+title C4 Level 4 - Code Diagram: Provide Health Data Orchestrator
+
+package "src/app/api/ingest" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class IngestOrchestrator <<Class>> {
+        + coordinateTransformations(payload: JSON): Result
+    }
+}
+
+package "src/lib" {
+    class Validator <<Service>>
+    class AIService <<Service>>
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> IngestOrchestrator : delegates
+IngestOrchestrator --> Validator : validates payload (Bronze)
+IngestOrchestrator --> AIService : requests translation (Silver/Gold)
+IngestOrchestrator --> SupabaseClient : logs transaction
+
+@enduml

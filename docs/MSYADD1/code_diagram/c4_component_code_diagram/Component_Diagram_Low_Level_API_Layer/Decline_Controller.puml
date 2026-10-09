@@ -1,0 +1,23 @@
+@startuml Decline_Controller
+!theme plain
+title C4 Level 4 - Code Diagram: Decline Controller
+
+package "src/app/api/decline" {
+    class "route.ts" as RouteHandler <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class DeclineController <<Class>> {
+        + handleDecline(txID: String, reason: String): Result
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+}
+
+RouteHandler --> DeclineController : delegates
+DeclineController --> SupabaseClient : updates status = QUARANTINED
+DeclineController --> SupabaseClient : logs decline reason
+
+@enduml

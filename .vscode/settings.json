@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git status --short --branch; git config --get user\\.name; git config --get user\\.email$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

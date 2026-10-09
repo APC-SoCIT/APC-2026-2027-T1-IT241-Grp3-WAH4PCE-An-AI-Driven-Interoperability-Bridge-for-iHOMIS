@@ -1,0 +1,19 @@
+@startuml Validation_Service
+!theme plain
+title C4 Level 4 - Code Diagram: Validation Service
+
+package "src/lib/validator.ts" {
+    class Validator <<Service>> {
+        + checkStructuralIntegrity(payload: JSON): ValidationResult
+        + validateSchema(payload: JSON, schemaType: String): bool
+    }
+    
+    class ValidationResult <<Struct>> {
+        + isValid: bool
+        + errors: List<String>
+    }
+}
+
+Validator ..> ValidationResult : returns
+
+@enduml

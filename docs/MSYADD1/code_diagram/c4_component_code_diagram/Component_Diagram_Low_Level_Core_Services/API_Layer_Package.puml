@@ -1,0 +1,29 @@
+@startuml API_Layer_Package
+!theme plain
+title C4 Level 4 - Code Diagram: API Layer [Package]
+
+package "src/app/api" {
+    class IngestRoute <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    class DeclineRoute <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    class RequestRoute <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    class MetricsRoute <<Next.js Route>> {
+        + GET(req: Request): Response
+    }
+}
+
+package "src/lib" {
+    class CoreServices <<Services>>
+}
+
+IngestRoute --> CoreServices : delegates processing
+DeclineRoute --> CoreServices : delegates quarantine
+RequestRoute --> CoreServices : queries data
+MetricsRoute --> CoreServices : aggregates stats
+
+@enduml

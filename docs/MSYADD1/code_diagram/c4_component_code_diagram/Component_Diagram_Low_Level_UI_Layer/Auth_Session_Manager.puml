@@ -1,0 +1,25 @@
+@startuml Auth_Session_Manager
+!theme plain
+title C4 Level 4 - Code Diagram: Auth & Session Manager
+
+package "src/app/api/auth/login" {
+    class "route.ts" as LoginRoute <<Next.js Route>> {
+        + POST(req: Request): Response
+    }
+    
+    class AuthController <<Class>> {
+        + validateCredentials(user: String, pass: String): JWT
+    }
+}
+
+package "src/lib" {
+    class SupabaseClient <<Database>>
+    class Bcrypt <<Library>>
+}
+
+LoginRoute --> AuthController : parses body
+AuthController --> SupabaseClient : fetches hashed password
+AuthController --> Bcrypt : compares hashes
+AuthController ..> LoginRoute : returns JWT
+
+@enduml

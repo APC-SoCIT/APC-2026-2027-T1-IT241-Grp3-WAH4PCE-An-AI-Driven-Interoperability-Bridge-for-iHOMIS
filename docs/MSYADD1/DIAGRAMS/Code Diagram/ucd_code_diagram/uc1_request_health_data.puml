@@ -1,6 +1,6 @@
 @startuml UC1_Request_Health_Data
 !theme plain
-title C4 Level 4 — Code Diagram: UC1 Request Health Data
+title C4 Level 4 — Code Diagram: UC1 Request Health Data (Example: HL7)
 
 package "iHOMIS Portal (React/Next.js)" {
     class RequestPage {

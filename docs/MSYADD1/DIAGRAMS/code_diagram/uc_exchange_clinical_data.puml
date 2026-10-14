@@ -1,0 +1,50 @@
+@startuml UC_Exchange_Clinical_Data
+title C4 Level 4 - Code Diagram: Exchange Clinical Data
+
+package "iHOMIS Portal (React/Next.js)" {
+    class SavePage {
+        + handleSave()
+    }
+    class IngestProxyRoute <<RouteHandler>> {
+        + POST(req: Request)
+    }
+}
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class IngestHandler <<struct>> {
+        + mongoRepo: MongoDBRepository
+        + aiService: AIService
+        + validatorSvc: ValidationService
+        + HandleIngest(w: ResponseWriter, r: Request)
+        + ForwardWebhook(url: String, payload: String)
+    }
+    class MongoDBRepository <<struct>> {
+        + InsertTransaction(tx: Transaction): String
+        + UpdateStatus(txID: String, status: String)
+    }
+    class AIService <<struct>> {
+        + TransformWithAI(payload: String, direction: String): TransformResult
+    }
+    class ValidationService <<struct>> {
+        + ValidateTransformation(data: String, direction: String): ValidationResult
+    }
+}
+
+package "WAH Hospital (React/Next.js)" {
+    class WebhookRoute <<RouteHandler>> {
+        + POST(req: Request)
+    }
+}
+
+class "Clinician / Staff" as Clinician <<Actor>>
+
+Clinician --> SavePage : provides data
+SavePage --> IngestProxyRoute : submits
+IngestProxyRoute --> IngestHandler : forwards payload
+IngestHandler --> MongoDBRepository : updates status
+IngestHandler --> AIService : requests translation
+IngestHandler --> ValidationService : requests validation
+IngestHandler --> WebhookRoute : pushes webhook
+IngestHandler ..> IngestProxyRoute : returns status
+
+@enduml

@@ -1,0 +1,26 @@
+@startuml UC_Execute_AI_First_Semantic_Translation
+title C4 Level 4 - Code Diagram: Execute AI-First Semantic Translation
+
+package "internal.services" {
+    class AIService <<struct>> {
+        - localLLMURL: String
+        - buildPrompt(payload: String, direction: String): String
+        + TransformWithAI(payload: String, direction: String): TransformResult
+    }
+    
+    class TransformResult <<struct>> {
+        + Success: bool
+        + Data: String
+        + UsedModel: String
+    }
+}
+
+class "Gemma 4 9B Server" as LocalLLMServer <<ExternalSystem>> {
+    + POST /api/generate(model: String, prompt: String)
+}
+
+AIService --> LocalLLMServer : sends formatted prompt
+LocalLLMServer ..> AIService : returns generated JSON
+AIService ..> TransformResult : parses output
+
+@enduml

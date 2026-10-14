@@ -1,0 +1,40 @@
+@startuml UC_Translate_Data
+title C4 Level 4 - Code Diagram: Translate Data to/from PH Core HL7 FHIR R4 / HL7 v2
+
+package "internal.handlers" {
+    class IngestHandler <<struct>> {
+        + aiService: AIService
+        + mapper: Mapper
+        + HandleIngest(w: ResponseWriter, r: Request)
+    }
+}
+
+package "internal.services" {
+    class AIService <<struct>> {
+        - localLLMURL: String
+        + GetTransformDirection(srcFmt: String, dstFmt: String): String
+        + TransformWithAI(payload: String, direction: String): TransformResult
+    }
+
+    class Mapper <<struct>> {
+        + FallbackTransform(payload: String, direction: String): Map
+    }
+    
+    class TransformResult <<struct>> {
+        + Success: bool
+        + Data: String
+        + Error: String
+        + UsedModel: String
+    }
+}
+
+class "Gemma 4 9B Server" as GemmaServer <<ExternalSystem>> {
+    + POST /api/generate(model: String, prompt: String)
+}
+
+IngestHandler --> AIService : requests translation
+IngestHandler --> Mapper : triggers fallback
+AIService ..> TransformResult : produces
+AIService --> GemmaServer : queries Gemma 4 9B
+
+@enduml

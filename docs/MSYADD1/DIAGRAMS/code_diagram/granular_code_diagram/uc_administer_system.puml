@@ -1,0 +1,66 @@
+@startuml UC_Administer_System
+title C4 Level 4 - Code Diagram: Administer System
+
+class "System Admin" as Admin <<Actor>>
+
+package "ADAPT Admin Dashboard (React/Next.js)" {
+    class Middleware <<Proxy>> {
+        + validateSession()
+    }
+    class LoginPage {
+        + handleSubmit()
+    }
+    class DashboardPage {
+        + fetchMetrics()
+    }
+    class TransactionLogsPage {
+        + fetchLogs()
+    }
+    class DataMapperPage {
+        + fetchTransaction()
+    }
+}
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class AuthHandler <<struct>> {
+        + mongoRepo: MongoRepository
+        + Login(w: ResponseWriter, r: Request)
+    }
+    class MetricsHandler <<struct>> {
+        + mongoRepo: MongoRepository
+        + GetMetrics(w: ResponseWriter, r: Request)
+    }
+    class TransactionsHandler <<struct>> {
+        + mongoRepo: MongoRepository
+        + GetTransactions(w: ResponseWriter, r: Request)
+        + GetTransactionByID(w: ResponseWriter, r: Request)
+    }
+    class MongoRepository <<struct>> {
+        + VerifyCredentials(user: String, hash: String): User
+        + GetMetricsAggregation(): Metrics
+        + GetTransactions(filters: Map): List<Transaction>
+    }
+}
+
+class "MongoDB" as MongoDB <<Database>>
+
+Admin --> LoginPage : authenticates
+LoginPage --> AuthHandler : submits credentials
+AuthHandler --> MongoRepository : verifies user
+MongoRepository --> MongoDB : queries
+
+Admin --> Middleware : navigates
+Middleware --> LoginPage : redirects unauthenticated
+
+Admin --> DashboardPage : monitors
+DashboardPage --> MetricsHandler : fetches metrics
+MetricsHandler --> MongoRepository : aggregates data
+
+Admin --> TransactionLogsPage : audits
+TransactionLogsPage --> TransactionsHandler : fetches logs
+TransactionsHandler --> MongoRepository : queries logs
+
+Admin --> DataMapperPage : inspects
+DataMapperPage --> TransactionsHandler : fetches detail
+
+@enduml

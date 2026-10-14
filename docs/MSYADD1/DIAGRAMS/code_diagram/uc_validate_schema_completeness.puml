@@ -1,0 +1,43 @@
+@startuml UC_Validate_Schema_Completeness
+title C4 Level 4 - Code Diagram: Validate Schema & Completeness
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class IngestHandler <<struct>> {
+        + validator: ValidationModule
+        + mongoRepo: MongoDBRepository
+        + HandleIngest(w: ResponseWriter, r: Request)
+    }
+
+    class ValidationModule <<struct>> {
+        + fhirValidator: FHIRValidator
+        + hl7Validator: HL7Validator
+        + ValidateTransformation(data: String, direction: String): ValidationResult
+    }
+
+    class FHIRValidator <<struct>> {
+        + validateFHIR(data: String): ValidationResult
+    }
+
+    class HL7Validator <<struct>> {
+        + validateHL7(data: String): ValidationResult
+    }
+
+    class ValidationResult <<struct>> {
+        + Valid: bool
+        + Errors: List<String>
+    }
+
+    class MongoDBRepository <<struct>> {
+        + UpdateStatusQuarantined(txID: String, errMessage: String)
+    }
+}
+
+IngestHandler --> ValidationModule : calls ValidateTransformation()
+ValidationModule --> FHIRValidator : validates FHIR
+ValidationModule --> HL7Validator : validates HL7
+FHIRValidator ..> ValidationResult : produces
+HL7Validator ..> ValidationResult : produces
+ValidationModule ..> ValidationResult : produces
+IngestHandler --> MongoDBRepository : saves quarantine state (on error)
+
+@enduml

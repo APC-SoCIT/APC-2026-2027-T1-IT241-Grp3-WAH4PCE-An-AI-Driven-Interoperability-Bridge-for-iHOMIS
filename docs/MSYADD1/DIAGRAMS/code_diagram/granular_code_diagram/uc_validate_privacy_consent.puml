@@ -1,0 +1,40 @@
+@startuml UC_Validate_Privacy_Consent
+title C4 Level 4 - Code Diagram: Validate Privacy Consent
+
+class Patient <<Actor>>
+
+package "iHOMIS Portal (React/Next.js)" {
+    class iHOMISConsent <<ReactComponent>> {
+        + consentSigned: boolean
+        + handleSave()
+    }
+}
+
+package "WAH Hospital (React/Next.js)" {
+    class WAHConsent <<ReactComponent>> {
+        + consentSigned: boolean
+        + handleSave()
+    }
+}
+
+package "ADAPT iPaaS Middleware (Golang)" {
+    class IngestHandler <<struct>> {
+        + mongoRepo: MongoDBRepository
+        + HandleIngest(w: ResponseWriter, r: Request)
+    }
+
+    class MongoDBRepository <<struct>> {
+        + InsertQuarantinedTransaction(tx: Transaction, msg: String)
+    }
+}
+
+Patient --> iHOMISConsent : signs consent
+Patient --> WAHConsent : signs consent
+
+iHOMISConsent --> IngestHandler : submits payload
+WAHConsent --> IngestHandler : submits payload
+
+IngestHandler --> MongoDBRepository : quarantines unconsented payload
+IngestHandler ..> Patient : returns 422 (if denied)
+
+@enduml
